@@ -1,0 +1,10 @@
+[
+    {
+        "overflown_address": "rbp-0x10",
+        "fnname": "fgets",
+        "vuln_function": "main",
+        "address": "400539",
+        "vulnerability": "INVALIDACCS",
+        "overflow_var": "buf"
+    }
+]
