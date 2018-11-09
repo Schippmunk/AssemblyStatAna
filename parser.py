@@ -10,10 +10,7 @@ def parser(name):
     return parse_json(data)
 
 def parse_json(data):
-
-    func_vars =  {}
-    func_instrs = {}
-    func_Ninstr = {}
+    
     result = {}
 
     #Get function names
@@ -21,19 +18,13 @@ def parse_json(data):
     
     #Parse vars and instrs for each function
     for f_n in func_names:
-        func_vars[f_n]=data[f_n]['variables']
-        func_instrs[f_n]=data[f_n]['instructions']
-        func_Ninstr[f_n] = data[f_n]['Ninstructions']
+        result[f_n] = {'instructions': data[f_n]['instructions'], 'Ninstructions': data[f_n]['Ninstructions'], 'variables': data[f_n]['variables']}
 
-    func_instrs['main'] = func_instrs['main'][3:]
-
-    result['func_vars'] = func_vars
-
-    pprint(result['func_vars'])
-    result['func_instrs'] = func_instrs
-    result['func_Ninstr'] = func_Ninstr
+    for f_n in func_names:
+        result[f_n]['instructions'] = result[f_n]['instructions'][3:]
     
-    
+    #result['main'] = func_instrs['main'][3:]
+    #pprint(result)
     return result
 
 
