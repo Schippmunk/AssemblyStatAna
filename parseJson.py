@@ -42,3 +42,7 @@ def parse_json():
     pprint(func_Ninstr)
     
     return True
+
+if __name__ == "__main__":
+    import sys
+    main("public_tests/test" + sys.argv[1] + ".json")
