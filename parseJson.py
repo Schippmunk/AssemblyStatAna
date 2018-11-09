@@ -9,6 +9,9 @@ func_Ninstr = {}
 def main(name):
     open_json(name)
     parse_json()
+    if (not check_buffer_exists()):
+        print("No buffers found in this file! :-)")
+        return False
 
 def open_json(name):
     global data
@@ -43,6 +46,17 @@ def parse_json():
     
     return True
 
-if __name__ == "__main__":
-    import sys
-    main("public_tests/test" + sys.argv[1] + ".json")
+def check_buffer_exists():
+    func_names = func_vars.keys()
+    
+    for f_n in func_names:
+        for var in func_vars[f_n]:
+            print(var)
+            if(var['type'] == 'buffer'):
+                return True
+    return False
+    
+    
+    
+    
+    
