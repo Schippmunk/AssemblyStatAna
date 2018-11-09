@@ -6,24 +6,32 @@ from pprint import pprint
 # regular expressions used to match adresses in fgets
 import re
 
-p_data = {}
-register_values = {}
-ourfilename = '';
 
+
+# holds all information about the program
+p_data = {}
 
 def check_gets(f_n, instruction):
+    print("\nAnalyzing vulnerability due to gets in", f_n)
     print(instruction)
 
 
 def check_strcpy(f_n, instruction):
-    print("\nAnalyzing vulnerability due to fgets in", f_n)
+    print("\nAnalyzing vulnerability due to strcpy in", f_n)
+    print(instruction)
 
 
 def check_strncpy(f_n, instruction):
+    print("\nAnalyzing vulnerability due to strncpy in", f_n)
     print(instruction)
 
 
 def check_strcat(f_n, instruction):
+    print("\nAnalyzing vulnerability due to strcat in", f_n)
+    print(instruction)
+
+def check_strncat(f_n, instruction):
+    print("\nAnalyzing vulnerability due to strncat in", f_n)
     print(instruction)
 
 
@@ -45,10 +53,10 @@ def check_fgets(f_n, instruction):
 
     # find the buffer to copy into
     # load the instruction
-    bufferinst = get_instruction(f_n, instruction['pos'] - 3);
+    buffer_inst = get_instruction(f_n, instruction['pos'] - 3)
     # in the the first 5 tests at least, the buffer is only loaded using lea, and the address depends directly on rbp
-    if bufferinst['op'] == 'lea':
-        buffer_address = bufferinst['args']['value']
+    if buffer_inst['op'] == 'lea':
+        buffer_address = buffer_inst['args']['value']
 
         # see if the address of the buffer saved in that operation is one we support
         # named re_relative_address because it matches addresses that are defined relative to rbp
@@ -62,7 +70,7 @@ def check_fgets(f_n, instruction):
             # find the buffer variable among the local vars of f_n
             buffer = get_var(f_n, buffer_address)
             # get the amount of its bytes and convert base
-            bufsize = int(buffer['bytes']);
+            bufsize = int(buffer['bytes'])
 
             print("Size of the buffer is", bufsize)
 
@@ -75,10 +83,9 @@ def check_fgets(f_n, instruction):
                 print("VULNERABILITY: Buffer can be overflown by", inputlength - bufsize)
                 buffer_name = buffer['name']
 
-                ## check for INVALIDACCESS ##
+                # check for INVALIDACCESS ##
 
-
-                ## check for RBPOVERFLOW ##
+                # check for RBPOVERFLOW ##
                 # parse distance between buffer_address and rbp
                 buffer_rbp_distance = int(buffer_address[4:], 16)
                 print("Offset of the buffer_address", buffer_rbp_distance)
@@ -88,7 +95,7 @@ def check_fgets(f_n, instruction):
                     vuln = jsonio.create_vulnerability("RBPOVERFLOW", f_n, 'fgets', buffer_name, instruction['address'])
                     jsonio.add_vulnerability(vuln)
 
-                ## check vor VARIABLEOVERFLOW ##
+                # check vor VARIABLEOVERFLOW ##
                 # loop through all variables in the function
                 for variable in p_data[f_n]['variables']:
                     if not variable['name'] == buffer_name:
@@ -118,32 +125,27 @@ def check_fgets(f_n, instruction):
         return False
 
 
-
-
-
+# the basic dangerous functions we are considering
+dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
+                       '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
 
 def get_instruction(f_n, number):
+    """Returns the dictionray of the nunmber-th instruction of function f_n"""
     return p_data[f_n]['instructions'][number - 3]
 
 
-def check_strncat(f_n, instruction):
-    print(instruction)
-
-
 def get_var(f_n, address):
+    """Returns the whole variable dictionary of function f_n, if address matches the variable's address"""
     for var in p_data[f_n]['variables']:
         if var['address'] == address:
             return var
     print("get_var ERROR: No such address {} in function {}".format(address, f_n))
 
 
-# basic, for now
-dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
-                       '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
-
 
 def check_buffer_vuln():
+    """Goes through the instructions, and delegates analysis of detected dangerous functions"""
     for f_n in p_data.keys():
         for instr in p_data[f_n]['instructions']:
             if instr['op'] == 'call':
@@ -151,17 +153,14 @@ def check_buffer_vuln():
                     dangerous_functions[instr['args']['fnname']](f_n, instr)
 
 
-def check_vuln():
-    check_buffer_vuln()
-
-    # check_dangerous_func()
-
 
 def main(name):
     global p_data
     p_data = jsonio.parser(name)
 
-    check_vuln()
+    add_variable_positions()
+
+    check_buffer_vuln()
     '''if (not check_buffer_exists()):
         print("No buffers found in this file! :-)")
         return False'''
