@@ -3,14 +3,18 @@ from pprint import pprint
 
 
 def parser(name):
-    global data
+    """Opens JSON file and calls parse_json with it"""
     with open(name) as f:
         data = json.load(f)
     
     return parse_json(data)
 
 def parse_json(data):
-    
+    """Creates a dictionary of the JSON data and returns it
+
+    keys are function names
+    each value is a dictionary with keys instructions, Ninstructions and variables
+    """
     result = {}
 
     #Get function names
