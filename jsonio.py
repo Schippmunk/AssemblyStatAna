@@ -67,7 +67,7 @@ def add_vulnerability(vulnerability):
     #TODO: actually add it to the file
 
 
-def create_vulnerability(vulnerability='', vuln_function='', fnname='', overflow_var='', address='', overflown_address=''):
+def create_vulnerability(vulnerability='', vuln_function='', fnname='', overflow_var='', address='', overflown_var=''):
     """Produces a dictionary in the desired output format"""
     vuln = {
         'vulnerability': vulnerability,
@@ -76,5 +76,5 @@ def create_vulnerability(vulnerability='', vuln_function='', fnname='', overflow
         'overflow_var': overflow_var,
         'vuln_function': vuln_function}
     if not vulnerability == 'RBPOVERFLOW':
-        vuln['overflown_address'] = overflown_address
+        vuln['overflown_var'] = overflown_var
     return vuln

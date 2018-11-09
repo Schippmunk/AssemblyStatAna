@@ -30,7 +30,7 @@ def check_strcat(f_n, instruction):
 def check_fgets(f_n, instruction):
     print("\nAnalyzing vulnerability due to fgets in", f_n)
 
-    pprint(p_data)
+    #pprint(p_data)
 
     # find the second parameter, the length that is read by fgets. It gets moved two positions before the gets call
     # this call assumes that the parameter is a hardcoded number, not a variable
@@ -49,9 +49,11 @@ def check_fgets(f_n, instruction):
     # in the the first 5 tests at least, the buffer is only loaded using lea, and the address depends directly on rbp
     if bufferinst['op'] == 'lea':
         buffer_address = bufferinst['args']['value']
+
         # see if the address of the buffer saved in that operation is one we support
-        regular_expression = re.compile('\[rbp-0x\d+\]')
-        if regular_expression.match(buffer_address):
+        # named re_relative_address because it matches addresses that are defined relative to rbp
+        re_relative_address = re.compile('\[rbp-0x\d+\]')
+        if re_relative_address.match(buffer_address):
             # cool, buffer_address is of the form [rbp-0x50]
 
             # clip off [ and ]
@@ -71,10 +73,10 @@ def check_fgets(f_n, instruction):
             else:
                 # now check what can be overflown
                 print("VULNERABILITY: Buffer can be overflown by", inputlength - bufsize)
+                buffer_name = buffer['name']
 
                 ## check for INVALIDACCESS ##
 
-                ## check vor VARIABLEOVERFLOW ##
 
                 ## check for RBPOVERFLOW ##
                 # parse distance between buffer_address and rbp
@@ -83,8 +85,30 @@ def check_fgets(f_n, instruction):
 
                 if buffer_rbp_distance < inputlength:
                     # bufferoverflow can reach rbp
-                    vuln = jsonio.create_vulnerability("RBPOVERFLOW", f_n, 'fgets', buffer['name'], instruction['address'])
+                    vuln = jsonio.create_vulnerability("RBPOVERFLOW", f_n, 'fgets', buffer_name, instruction['address'])
                     jsonio.add_vulnerability(vuln)
+
+                ## check vor VARIABLEOVERFLOW ##
+                # loop through all variables in the function
+                for variable in p_data[f_n]['variables']:
+                    if not variable['name'] == buffer_name:
+                        # check for each of these variables if they can be overflown
+                        variable_address = variable['address']
+                        print('Checking variable for overflow:', variable['name'])
+                        re_relative_address = re.compile('rbp-0x\d+')
+                        if re_relative_address.match(variable_address):
+                            variable_rbp_distance = int(variable_address[4:], 16)
+                            print('Distance of that variable from rbp is', variable_rbp_distance)
+
+                            # buffer_rbp_distance - variable_rbp_distance describes the distance between
+                            # buffer_address and input_address
+                            if buffer_rbp_distance - variable_rbp_distance < inputlength:
+                                vuln = jsonio.create_vulnerability("VAROVERFLOW", f_n, 'fgets', buffer_name,
+                                                                   instruction['address'], variable['name'])
+                                jsonio.add_vulnerability(vuln)
+
+                        else:
+                            print('ERROR: value of variable_address is', variable_address)
 
         else:
             print('ERROR: value of buffer_address is', buffer_address)
