@@ -41,7 +41,7 @@ def parse_json(data):
                        'variables': data[f_n]['variables']}
 
     for f_n in func_names:
-        result[f_n]['instructions'] = result[f_n]['instructions'][3:]
+        result[f_n]['instructions'] = result[f_n]['instructions']
 
     # result['main'] = func_instrs['main'][3:]
     # pprint(result)
@@ -53,7 +53,15 @@ def create_output_file():
     #TODO: actually create the file
     pass
 
-
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 def add_vulnerability(vulnerability):
     """Appends the vulnerability to filename name
 
@@ -65,8 +73,10 @@ def add_vulnerability(vulnerability):
         "vulnerability": "INVALIDACCS",
         "overflow_var": "buf"
     """
+    print(bcolors.GREEN)
     print("Adding the following vulnerability to ", outputfilename)
     pprint(vulnerability)
+    print(bcolors.ENDC)
     #TODO: actually add it to the file
 
 
