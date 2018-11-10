@@ -13,9 +13,12 @@ def parser(name):
     global outputfilename
     outputfilename = "public_tests/test" + name + ".OURoutput.json"
 
-    with open(inputfilename) as f:
-        data = json.load(f)
-
+    try:
+        with open(inputfilename) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print("No such file or directory:", inputfilename)
+        return None
     create_output_file()
 
     return parse_json(data)
