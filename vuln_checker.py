@@ -9,6 +9,9 @@ import re
 # holds all information about the program
 p_data = {}
 
+
+# checking functions
+
 def check_gets(f_n, instruction):
     print("\nAnalyzing vulnerability due to gets in", f_n)
     print(instruction)
@@ -55,7 +58,7 @@ def check_fgets(f_n, instruction):
     # in the the first 5 tests at least, the buffer is only loaded using lea, and the address depends directly on rbp
     if buf_inst['op'] == 'lea':
         buf_address = buf_inst['args']['value']
-        # clip off [ and ]
+        # clip off [, ]
         buf_address = buf_address[1:len(buf_address) - 1]
 
         check_overflow_consequences(f_n, instruction, input_length, buf_address)
@@ -63,33 +66,38 @@ def check_fgets(f_n, instruction):
         print('ERROR: Buffer not loaded using lea')
 
 
+
+
+
 # the basic dangerous functions we are considering
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
                        '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
 
+
+
+
 # helper functions for the check_* functions
+
+
+
+
 def check_overflow_consequences(f_n, instruction, input_length, buf_address):
     """ Knowing the length of the input, and the address of the buf, what can happen?"""
 
     # find the buf variable among the local vars of f_n
     buf = get_var(f_n, buf_address)
     if buf:
-        # get the amount of its bytes and convert base
-        buf_size = int(buf['bytes'])
-
-        print("Size of the buf is", buf_size)
-
-        # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf_size
-        if input_length <= buf_size:
-            print("Here is no bufferoverflow possible.")
-        else:
+        # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
+        if input_length > buf['bytes']:
             # now check what can be overflown
-            print("VULNERABILITY: Buffer can be overflown by", input_length - buf_size)
+            print("VULNERABILITY: Buffer can be overflown by", input_length - buf['bytes'])
 
             check_rbp_overflow(f_n, instruction, input_length, buf)
             check_var_overflow(f_n, instruction, input_length, buf)
             check_invalid_address()
+        else:
+            print("Here is no bufferoverflow possible.")
 
 
 def check_rbp_overflow(f_n, instruction, input_length, buf):
@@ -124,6 +132,12 @@ def check_invalid_address():
     pass
 
 
+
+# utility functions
+
+
+
+
 def get_instruction(f_n, number):
     """Returns the dictionray of the nunmber-th instruction of function f_n"""
 
@@ -156,6 +170,13 @@ def get_var_distance(var1, var2):
     """Given the name of two variables computes their distance in the stack"""
 
     return var1['rbpdistance'] - var2['rbpdistance']
+
+
+
+
+# initialization functions
+
+
 
 
 def add_variable_positions():
