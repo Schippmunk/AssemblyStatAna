@@ -49,24 +49,29 @@ def check_strncat(f_n, instruction):
 
 
 def check_fgets(f_n, inst):
+    """Assumes the buffer gets loaded from rax and the input from esi"""
     print("\nAnalyzing vulnerability due to fgets in", f_n)
 
+    input_len = find_len_param(f_n, inst, 'esi')
+    print("Input_len is", input_len)
 
-    input_len = find_len_param(f_n, inst)
-    print("New function input_len is", input_len)
+    buf_address = find_buf_param(f_n, inst, 'rax')
+    print("Buf_address is", buf_address)
 
-    buf_address = find_buf_param(f_n, inst)
     check_overflow_consequences(f_n, inst, input_len, buf_address)
 
-def find_len_param(f_n, instr):
-    """ finds the the length parameter of fgets using reg_val"
 
-    It assumes that it is always loaded from esi
+
+
+def find_len_param(f_n, instr, reg):
+    """ finds the the length parameter using reg_val"
+
+    It assumes that it is always loaded from reg
     """
 
-    #return reg_val['esi'][f_n][instr['pos']]
-    #return find_last_existing_entry(reg_val['esi'][f_n], instr['pos'])
-    rv = find_reg_val(f_n, instr['pos'], 'esi')
+    #return reg_val[reg][f_n][instr['pos']]
+    #return find_last_existing_entry(reg_val[reg][f_n], instr['pos'])
+    rv = find_reg_val(f_n, instr['pos'], reg)
     if rv:
         if reg_matcher['hex_num'].match(rv):
             return int(rv, 16)
@@ -75,9 +80,9 @@ def find_len_param(f_n, instr):
 
 
 
-def find_buf_param(f_n, instr):
-    """ finds the buffer parameter in register rax in funciton main currently at instruction instr"""
-    rv = find_reg_val(f_n, instr['pos'], 'rax')
+def find_buf_param(f_n, instr, reg):
+    """ finds the buffer parameter in register reg in funciton main currently at instruction instr"""
+    rv = find_reg_val(f_n, instr['pos'], reg)
     if rv:
         if reg_matcher['relative_rbp'].match(rv):
             return my_str_trim(rv)
@@ -281,6 +286,8 @@ def analyze_reg_val():
     analyze_reg_val_rec('main')
     print("\nThe values of the registers during execution are")
     pprint(reg_val)
+
+
 
 def analyze_reg_val_rec(f_n):
     """ sets up the global var reg_val starting at f_n
