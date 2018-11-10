@@ -12,6 +12,10 @@ p_data = {}
 # dictionary with keys = registers and value = dictionary of value of register at each position in the program
 reg_val = {}
 
+reg_matcher = {'relative_rbp_trimmed': re.compile('rbp-0x\d+'),
+               'relative_rbp': re.compile('\[rbp-0x\d+\]'),
+               'hex_num': re.compile('0x\d+'),
+               'all': re.compile('rbp-0x\d+|\[rbp-0x\d+\]|0x\d+')}
 
 
 
@@ -44,34 +48,44 @@ def check_strncat(f_n, instruction):
     print(instruction)
 
 
-def check_fgets(f_n, instruction):
+def check_fgets(f_n, inst):
     print("\nAnalyzing vulnerability due to fgets in", f_n)
 
 
+    input_len = find_len_param(f_n, inst)
+    print("New function input_len is", input_len)
 
-    # find the second parameter, the length that is read by fgets. It gets moved two positions before the gets call
-    # this call assumes that the parameter is a hardcoded number, not a variable
-    # TODO: write a general method for this, that maybe even treats the case where the parameter is not hardcoded
-    input_length = get_instruction(f_n, instruction['pos'] - 2)['args']['value']
-    regular_expression = re.compile('0x\d+')
-    if regular_expression.match(input_length):
-        input_length = int(input_length, 0)
-        print("Maximum input length is", input_length)
-    else:
-        print("ERROR: inputlenght is not a hexadecimal number, but", input_length)
+    buf_address = find_buf_param(f_n, inst)
+    check_overflow_consequences(f_n, inst, input_len, buf_address)
 
-    # find the buffer to copy into
-    # load the instruction
-    buf_inst = get_instruction(f_n, instruction['pos'] - 3)
-    # in the the first 5 tests at least, the buffer is only loaded using lea, and the address depends directly on rbp
-    if buf_inst['op'] == 'lea':
-        buf_address = buf_inst['args']['value']
-        # clip off [, ]
-        buf_address = buf_address[1:len(buf_address) - 1]
+def find_len_param(f_n, instr):
+    """ finds the the length parameter of fgets using reg_val"
 
-        check_overflow_consequences(f_n, instruction, input_length, buf_address)
-    else:
-        print('ERROR: Buffer not loaded using lea')
+    It assumes that it is always loaded from esi
+    """
+
+    #return reg_val['esi'][f_n][instr['pos']]
+    #return find_last_existing_entry(reg_val['esi'][f_n], instr['pos'])
+    rv = find_reg_val(f_n, instr['pos'], 'esi')
+    if rv:
+        if reg_matcher['hex_num'].match(rv):
+            return int(rv, 16)
+        else:
+            print("ERROR: Value in rsi is not hex, but", rv)
+
+
+
+def find_buf_param(f_n, instr):
+    """ finds the buffer parameter in register rax in funciton main currently at instruction instr"""
+    rv = find_reg_val(f_n, instr['pos'], 'rax')
+    if rv:
+        if reg_matcher['relative_rbp'].match(rv):
+            return my_str_trim(rv)
+        else:
+            print("ERROR: Value in rax is not of type relative_rbp, but", rv)
+
+
+
 
 
 
@@ -81,6 +95,7 @@ def check_fgets(f_n, instruction):
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
                        '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
+# The dangerous functions that occur in the program get pushed to this list in analyze_reg_val_rec
 dangerous_functions_occuring = []
 
 
@@ -144,7 +159,20 @@ def check_invalid_address():
 
 # utility functions
 
+def find_last_existing_entry(dictionary, key):
+    """ Goes downwards through the dictionary starting from key to find the first key that exists
+    and returns the entry
+    """
+    while key >= 0:
+        if key in dictionary.keys():
+            return [key, dictionary[key]]
+        else:
+            key = key - 1
+    return False
 
+def my_str_trim(str):
+    """returns the string with the first and last char removed"""
+    return str[1:len(str)-1]
 
 
 def get_instruction(f_n, number):
@@ -179,6 +207,21 @@ def get_var_distance(var1, var2):
     """Given the name of two variables computes their distance in the stack"""
 
     return var1['rbpdistance'] - var2['rbpdistance']
+
+
+
+def find_reg_val(f_n, pos, reg):
+    """ This very useful method uses reg_val to find the value of a register reg, given a function and position"""
+    entry = find_last_existing_entry(reg_val[reg][f_n], pos)
+    if reg_matcher['all'].match(entry[1]):
+        return entry[1]
+    elif entry in reg_val.keys():
+        return find_reg_val(f_n, entry[0], entry[1])
+    else:
+        # in this case the register has not been assigned to in the program
+        # this is an error for now
+        print("ERROR: cannot find value of register {} in function {} at position {}".format(reg, f_n, pos))
+        return None
 
 
 

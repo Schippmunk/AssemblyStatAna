@@ -9,3 +9,16 @@ If the program is compliled with x86-64 gcc 8.2 then strcpy gets its parameters 
 Now, write a function that works as a table:
 For each register, at each position in the program,
 know what is in there
+
+I use the following abbreviation vor variable names
+ position -> pos
+ variable -> var
+ register -> reg
+ paramter -> param
+ recursive -> rec
+ instruction -> instr
+ 
+
+fgets seems to get its parameters from the following registers:
+param 1 / buffer from rax
+param 2 / inputlength from esi 

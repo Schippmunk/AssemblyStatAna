@@ -73,7 +73,7 @@ def add_vulnerability(vulnerability):
         "vulnerability": "INVALIDACCS",
         "overflow_var": "buf"
     """
-    print(bcolors.GREEN)
+    print(bcolors.OKGREEN)
     print("Adding the following vulnerability to ", outputfilename)
     pprint(vulnerability)
     print(bcolors.ENDC)
