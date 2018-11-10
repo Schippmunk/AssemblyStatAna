@@ -3,6 +3,8 @@ import re
 
 import jsonio
 
+from util import *
+
 # pprint used for debugging
 from pprint import pprint
 
@@ -16,6 +18,8 @@ reg_matcher = {'relative_rbp_trimmed': re.compile('rbp-0x\d+'),
                'relative_rbp': re.compile('\[rbp-0x\d+\]'),
                'hex_num': re.compile('0x\d+'),
                'all': re.compile('rbp-0x\d+|\[rbp-0x\d+\]|0x\d+')}
+
+call_trace = ['none']
 
 
 
@@ -95,16 +99,6 @@ def find_buf_param(f_n, instr, reg):
 
 
 
-
-# the basic dangerous functions we are considering
-dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
-                       '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
-
-# The dangerous functions that occur in the program get pushed to this list in analyze_reg_val_rec
-dangerous_functions_occuring = []
-
-
-
 # helper functions for the check_* functions
 
 
@@ -173,11 +167,9 @@ def find_last_existing_entry(dictionary, key):
             return [key, dictionary[key]]
         else:
             key = key - 1
-    return False
-
-def my_str_trim(str):
-    """returns the string with the first and last char removed"""
-    return str[1:len(str)-1]
+    print("ERROR: key" + str(key) + "not found in dictionary")
+    pprint(dictionary)
+    print("")
 
 
 def get_instruction(f_n, number):
@@ -217,7 +209,8 @@ def get_var_distance(var1, var2):
 
 def find_reg_val(f_n, pos, reg):
     """ This very useful method uses reg_val to find the value of a register reg, given a function and position"""
-    entry = find_last_existing_entry(reg_val[reg][f_n], pos)
+    entry = find_last_existing_entry(reg_val[reg][f_n]['none'], pos)
+
     if reg_matcher['all'].match(entry[1]):
         return entry[1]
     elif entry in reg_val.keys():
@@ -232,7 +225,12 @@ def find_reg_val(f_n, pos, reg):
 
 
 # initialization functions
+# the basic dangerous functions we are considering
+dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
+                       '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
+# The dangerous functions that occur in the program get pushed to this list in analyze_reg_val_rec
+dangerous_functions_occuring = []
 
 
 
@@ -283,49 +281,47 @@ def analyze_reg_val():
     TODO: For the advanced case, it will be useful to add to the called function information on
     TODO: where they were called in the calling function
     """
-    analyze_reg_val_rec('main')
+    analyze_reg_val_rec()
     print("\nThe values of the registers during execution are")
     pprint(reg_val)
+    print("\nCall Trace:")
+    pprint(call_trace)
 
 
 
-def analyze_reg_val_rec(f_n):
+def analyze_reg_val_rec(f_n = 'main', previnst = 'none'):
     """ sets up the global var reg_val starting at f_n
 
     Goes through the instructions and for each mov and lea, saves the new register value in the table reg_val
     Follows function calls
     """
     global reg_val
+    global call_trace
+
     for instruction in p_data[f_n]['instructions']:
         #print("Analyzing function {}. instruction {}".format(f_n, instruction['pos']))
 
-        # Basically do the same for mov and lea operations
-        if instruction['op'] == 'mov':
+        pos = instruction['pos']
+        if instruction['op'] in ['mov', 'lea']:
             reg = instruction['args']['dest']
             val = instruction['args']['value']
-            pos = instruction['pos'];
-            if not reg in reg_val:
+
+            if reg not in reg_val.keys():
                 reg_val[reg] = {}
-            if not f_n in reg_val[reg]:
+            if f_n not in reg_val[reg].keys():
                 reg_val[reg][f_n] = {}
-            reg_val[reg][f_n][pos] = val;
-        elif instruction['op'] == 'lea':
-            reg = instruction['args']['dest']
-            val = instruction['args']['value']
-            pos = instruction['pos'];
-            if not reg in reg_val:
-                reg_val[reg] = {}
-            if not f_n in reg_val[reg]:
-                reg_val[reg][f_n] = {}
-            reg_val[reg][f_n][pos] = val;
+            if previnst not in reg_val[reg][f_n].keys():
+                reg_val[reg][f_n][previnst] = {}
+            reg_val[reg][f_n][previnst][pos] = val
         elif instruction['op'] == 'call':
             # follow function calls
             called_fn = instruction['args']['fnname']
             # remove <,>
-            called_fn_trimmed = called_fn[1:len(called_fn)-1]
+            called_fn_trimmed = my_str_trim(called_fn)
             if called_fn_trimmed in p_data.keys():
                 # in this case we're calling a user defined generic function
-                analyze_reg_val_rec(called_fn_trimmed)
+                call_trace.append(str(pos) + called_fn_trimmed)
+                analyze_reg_val_rec(called_fn_trimmed, f_n + str(pos))
             elif called_fn in dangerous_functions.keys():
                 dangerous_call = {"called_fn": called_fn, "instr": instruction, "f_n": f_n}
                 dangerous_functions_occuring.append(dangerous_call)
