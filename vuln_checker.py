@@ -43,7 +43,7 @@ def check_fgets(f_n, instruction):
 
     # find the second parameter, the length that is read by fgets. It gets moved two positions before the gets call
     # this call assumes that the parameter is a hardcoded number, not a variable
-    # TODO: write a general method for this, that maybe even treates the case wherethe parameter is not hardcoded
+    # TODO: write a general method for this, that maybe even treats the case where the parameter is not hardcoded
     input_length = get_instruction(f_n, instruction['pos'] - 2)['args']['value']
     regular_expression = re.compile('0x\d+')
     if regular_expression.match(input_length):
@@ -180,7 +180,7 @@ def get_var_distance(var1, var2):
 
 
 def add_variable_positions():
-    """Goes through all variables of all functiosn.
+    """Goes through all variables of all functions.
 
     Adds attribute rbpdistance to it, that is the decimal integer distance of it to rbp"""
 
