@@ -1,6 +1,5 @@
 import json
 from pprint import pprint
-from program import process_json
 
 inputfilename = ''
 outputfilename = ''
@@ -22,7 +21,7 @@ def parser(name):
         return None
     create_output_file()
 
-    return process_json(data)
+    return parse_json(data)
 
 
 def parse_json(data):
