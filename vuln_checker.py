@@ -142,7 +142,7 @@ def find_reg_val(state: State, reg: str, matcher: str, apply_converter: bool):
 # initialization functions
 
 
-def add_variable_positions():
+def add_variable_positions() -> None:
     """Goes through all variables of all functions.
 
     Adds attribute rbpdistance to it, that is the decimal integer distance of it to rbp"""
@@ -178,9 +178,9 @@ def main(name: str):
 
     add_variable_positions()
 
-    # print_list()
+    print_list()
     pprint(var)
-    # pprint(dangerous_functions_occurring)
+    pprint(dangerous_functions_occurring)
 
     for state in dan_fun_occ:
         dangerous_functions[state.called_fn](state)

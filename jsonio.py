@@ -1,4 +1,5 @@
 import json
+import util
 from pprint import pprint
 
 inputfilename = ''
@@ -42,15 +43,7 @@ def create_output_file():
     #TODO: actually create the file
     pass
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+
 def add_vulnerability(vulnerability):
     """Appends the vulnerability to filename name
 
@@ -62,10 +55,8 @@ def add_vulnerability(vulnerability):
         "vulnerability": "INVALIDACCS",
         "overflow_var": "buf"
     """
-    print(bcolors.OKGREEN)
-    print("Adding the following vulnerability to ", outputfilename)
-    pprint(vulnerability)
-    print(bcolors.ENDC)
+    util.prin("Adding the following vulnerability to " + outputfilename)
+    util.prin(vulnerability, util.bcolors.OKGREEN)
     #TODO: actually add it to the file
 
 
