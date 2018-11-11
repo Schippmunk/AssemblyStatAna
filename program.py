@@ -34,13 +34,14 @@ class State:
         s = s + indent + "end of state\n"
         return s
 
-    def add_reg_val(self, reg, val):
+    def add_reg_val(self, reg, val, sub = False):
+        if val in self.reg_vals.keys():
+            val = self.reg_vals[val]
+        elif sub:
+                val = reg + "-" + str(val)
         self.reg_vals[reg] = val
 
-
-
-
-def analyze_inst(inst, f_n, append_to, prev_reg = {}):
+def analyze_inst(inst: dict, f_n, append_to, prev_reg = {}):
     global dangerous_functions_occurring
     if not prev_reg:
         if p:
@@ -53,7 +54,7 @@ def analyze_inst(inst, f_n, append_to, prev_reg = {}):
     s.children = []
 
     if inst['op'] in ['mov', 'lea', 'sub']:
-        s.add_reg_val(inst['args']['dest'], inst['args']['value'])
+        s.add_reg_val(inst['args']['dest'], inst['args']['value'], (inst['op'] == 'sub'))
     elif inst['op'] == 'call':
         called_fn = inst['args']['fnname']
         # remove <,>
@@ -61,10 +62,10 @@ def analyze_inst(inst, f_n, append_to, prev_reg = {}):
         if called_fn_trimmed in data.keys():
             # in this case we're calling a user defined generic function
             s.called_fn = called_fn_trimmed
-            new_reg_vals = {}
+            use_reg_vals = s.reg_vals
             for instr in data[called_fn_trimmed]['instructions']:
-                new_reg_vals = analyze_inst(instr, called_fn_trimmed, s.children, s.reg_vals.copy())
-            s.reg_vals = new_reg_vals.copy()
+                use_reg_vals = analyze_inst(instr, called_fn_trimmed, s.children, use_reg_vals.copy())
+            s.reg_vals = use_reg_vals.copy()
         elif called_fn in dangerous_functions.keys():
             s.called_fn = called_fn
             dangerous_functions_occurring.append(s)

@@ -56,7 +56,9 @@ def add_vulnerability(vulnerability):
         "overflow_var": "buf"
     """
     util.prin("Adding the following vulnerability to " + outputfilename)
-    util.prin(vulnerability, util.bcolors.OKGREEN)
+    print(util.bcolors.OKGREEN)
+    pprint(vulnerability)
+    print(util.bcolors.ENDC)
     #TODO: actually add it to the file
 
 

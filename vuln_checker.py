@@ -28,14 +28,6 @@ reg_matcher = {'relative_rbp_trimmed': {'matcher': re.compile('rbp-0x\d+'),
 # checking functions
 
 
-def check_gets(state):
-    print("\nAnalyzing vulnerability due to gets in", state)
-
-
-def check_strncpy(state):
-    print("\nAnalyzing vulnerability due to strncpy in", state)
-
-
 def check_strcat(state):
     print("\nAnalyzing vulnerability due to strcat in", state)
 
@@ -44,8 +36,45 @@ def check_strncat(state):
     print("\nAnalyzing vulnerability due to strncat in", state)
 
 
+def check_gets(state):
+    print("\nAnalyzing vulnerability due to gets in", state)
+
+    buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
+    buf_address = my_str_trim(buf_address)
+    print("buf_address:", buf_address)
+
+    # now since input can have arbitrary length
+    # find the variable at buf_address
+    # everything behind it can be overflown
+
+
+def check_strncpy(state):
+    print("\nAnalyzing vulnerability due to strncpy in", state)
+
+    buf2_address = find_reg_val(state, 'rdi', 'relative_rbp')
+    print("buf2_address:", buf2_address)
+
+    buf_address = find_reg_val(state, 'rsi', 'relative_rbp')
+    print("buf_address:", buf_address)
+
+    limit = find_reg_val(state, 'rdx', 'relative_rbp')
+    print("limit:", buf_address)
+
+    # now see if the minimum of the limit and the length of the buf at buf_address exceed buf2
+
+
 def check_strcpy(state):
     print("\nAnalyzing vulnerability due to strcpy in", state)
+
+    buf2_address = find_reg_val(state, 'rdi', 'relative_rbp')
+    print("buf2_address:", buf2_address)
+
+    buf_address = find_reg_val(state, 'rsi', 'relative_rbp')
+    print("buf_address:", buf_address)
+
+    # compute input_length to be length of buffer at buf_address
+    # then call
+    # check_overflow_consequences(state, input_length, buf2_address)
 
 
 def check_fgets(state: State) -> None:
@@ -53,10 +82,11 @@ def check_fgets(state: State) -> None:
     print("\nAnalyzing vulnerability due to fgets in")
     print(state)
 
-    input_len = find_reg_val(state, 'esi', 'hex_num', True)
+    input_len = find_reg_val(state, 'esi', 'hex_num')
+    input_len = reg_matcher['hex_num']['converter'](input_len)
     print("input_len:", input_len)
 
-    buf_address = find_reg_val(state, 'rax', 'relative_rbp', False)
+    buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
     buf_address = my_str_trim(buf_address)
     print("buf_address:", buf_address)
 
@@ -127,17 +157,18 @@ def get_var(f_n: str, address: str) -> dict:
     print("get_var ERROR: No such address {} in function {}".format(address, f_n))
 
 
-def find_reg_val(state: State, reg: str, matcher: str, apply_converter: bool):
+def find_reg_val(state: State, reg: str, matcher: str):
     """ This very useful method uses reg_val to find the value of a register reg, given a function and position"""
 
-    reg_val = state.reg_vals[reg]
-    if reg_matcher[matcher]['matcher'].match(reg_val):
-        if apply_converter:
-            reg_val = reg_matcher[matcher]['converter'](reg_val)
-        return reg_val
+    if reg in state.reg_vals.keys():
+        reg_val = state.reg_vals[reg]
+        if reg_matcher[matcher]['matcher'].match(reg_val):
+            return reg_val
+        else:
+            # TODO: find it in the parent of the state
+            print("ERRROR: unknown register, or does not match", reg_val)
     else:
-        # TODO: find it in the parent of the state
-        print("ERRROR: unknown register, or does not match", reg_val)
+        print("ERROR: unkown register value of ", reg)
 
 
 # initialization functions
