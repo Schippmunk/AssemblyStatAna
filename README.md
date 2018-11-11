@@ -20,3 +20,7 @@ I use the following abbreviation vor variable names
  recursive -> rec
  instruction -> inst
  
+There are some INVALIDACCS vulnerabilities that are easy to detect, e.g.
+when the shadow space between the buffer and the RBP, where there is no variable,
+is overflown.
+ 

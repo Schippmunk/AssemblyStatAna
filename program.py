@@ -73,13 +73,11 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> 
     When called initially, append_to should be a global list like p
     """
     global dangerous_functions_occurring
-
-    # prev_reg is empty at the beginning of the program in main
-    if not prev_reg:
-        # so if we're not in the first two instructions of main anymore
-        if p:
-            # we need to copy the registers from after the previous instruction
-            prev_reg = p[-1].reg_vals.copy()
+    #pprint("analyzing")
+    #pprint(inst)
+    #print("in function", f_n)
+    #pprint("parameter prev_reg:")
+    #pprint(prev_reg)
 
     # Create the new state of this program
     s = State()
@@ -123,6 +121,8 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> 
             dangerous_functions_occurring.append(s)
     # after the state is completely analyzed (with all its children) we add it to append_to
     append_to.append(s)
+    #pprint("returning reg_vals")
+    #pprint(s.reg_vals)
     return s.reg_vals
 
 
@@ -136,7 +136,8 @@ def process_json(the_data):
     global data
     global p
     data = the_data
+    prev_reg = {}
     for inst in data['main']['instructions']:
-        analyze_inst(inst, 'main', p)
+        prev_reg = analyze_inst(inst, 'main', p, prev_reg.copy())
 
     return [p, dangerous_functions_occurring]

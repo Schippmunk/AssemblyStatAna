@@ -213,9 +213,9 @@ def main(name: str):
     add_variable_positions()
 
     # print statements
-    print_list()
-    pprint(var)
-    pprint(dangerous_functions_occurring)
+    #print_list()
+    #pprint(var)
+    #pprint(dangerous_functions_occurring)
 
     # analyze each dangerous function call
     for state in dan_fun_occ:
