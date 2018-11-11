@@ -49,6 +49,7 @@ def check_strcat(state):
         check_rbp_overflow(state, total_length, dest, 'strcat')
         check_var_overflow(state, total_length, dest, 'strcat')
         check_ret_overflow(state, total_length, dest, 'strcat')
+        check_s_corruption(state, total_length, dest, 'strcat')
     else:
         print("There is no STRCAT overflow possible here.")
 
@@ -148,8 +149,6 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
                                            state.inst['address'], overflown_address='rbp+0x10')
         jsonio.add_vulnerability(vuln)
     elif buf:
-        print(buf)
-        print(input_length)
         change_var_written(buf, input_length)
 
         print("Buffer is of size", buf['bytes'])
@@ -160,6 +159,8 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
 
             check_rbp_overflow(state, input_length, buf, dng_func)
             check_var_overflow(state, input_length, buf, dng_func)
+            check_ret_overflow(state, input_length, buf, dng_func)
+            check_s_corruption(state, input_length, buf, dng_func)
         else:
             print("There is no buffer overflow possible here.")
 
@@ -211,6 +212,15 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
                                                        state.inst['address'], v['name'])
                     jsonio.add_vulnerability(vuln)
 
+def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str) -> None:
+    """Check for SCORRUPTION in main"""
+    if state.f_n == 'main':
+        if input_length >  buf['rbp_distance'] + 16:
+            vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf['name'],
+                                               state.inst['address'], overflown_address='rbp+0x10')
+            jsonio.add_vulnerability(vuln)
+    # checking this if state.f_n is not main requires a lot more work, because we don't know how far the rbp of
+    # state.f_n is a way from the rbp of main
 
 # utility functions
 
