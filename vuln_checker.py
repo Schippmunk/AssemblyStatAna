@@ -16,13 +16,7 @@ data = {}
 p = {}
 var = {}
 
-reg_matcher = {'relative_rbp_trimmed': {'matcher': re.compile('rbp-0x\d+'),
-                                        'converter': lambda x: int(x[4:], 16)},
-               'relative_rbp': {'matcher': re.compile('\[rbp-0x\d+\]'),
-                                'converter': lambda x: int(x[5:len(x) - 1], 16)},
-               'hex_num': {'matcher': re.compile('0x\d+'),
-                           'converter': lambda x: int(x, 16)},
-               'all': {'matcher': re.compile('rbp-0x\d+|\[rbp-0x\d+\]|0x\d+')}}
+
 
 
 # checking functions

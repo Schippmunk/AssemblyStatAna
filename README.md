@@ -23,4 +23,9 @@ I use the following abbreviation vor variable names
 There are some INVALIDACCS vulnerabilities that are easy to detect, e.g.
 when the shadow space between the buffer and the RBP, where there is no variable,
 is overflown.
- 
+
+Info about x64 intel stack layout
+https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64/
+
+Powerpoint presentation explaining function calls in x86
+ https://www.cs.princeton.edu/courses/archive/spr11/cos217/lectures/15AssemblyFunctions.pdf
