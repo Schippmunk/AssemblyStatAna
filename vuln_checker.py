@@ -198,7 +198,7 @@ dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '
 def main(name: str):
     global data, var, p, dangerous_functions
 
-    json_data = jsonio.parser_path(name)
+    json_data = jsonio.parser(name)
 
     # not sure if data will be needed after this, or if p is good enough
     data = json_data['data']
