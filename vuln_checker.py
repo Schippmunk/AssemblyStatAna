@@ -112,7 +112,7 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
             print("There is no buffer overflow possible here.")
 
 
-def check_rbp_overflow(state, input_length: int, buf, instruction_name: str) -> None:
+def check_rbp_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
     """check for RBPOVERFLOW"""
     print("Offset of the buf_address", buf['rbp_distance'])
 
@@ -122,7 +122,7 @@ def check_rbp_overflow(state, input_length: int, buf, instruction_name: str) -> 
                                            state.inst['address'])
         jsonio.add_vulnerability(vuln)
         
-def check_ret_overflow(state, input_length: int, buf, instruction_name: str) -> None:
+def check_ret_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
     """check for RBPOVERFLOW"""
     print("Offset of the buf_address", buf['rbp_distance'])
 
@@ -134,7 +134,7 @@ def check_ret_overflow(state, input_length: int, buf, instruction_name: str) -> 
         jsonio.add_vulnerability(vuln)
 
 
-def check_var_overflow(state, input_length: int, buf, instruction_name: str) -> None:
+def check_var_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
     """check for VARIABLEOVERFLOW"""
 
     # loop through all variables in the function
@@ -152,7 +152,7 @@ def check_var_overflow(state, input_length: int, buf, instruction_name: str) -> 
                 jsonio.add_vulnerability(vuln)
 
 
-def check_invalid_address():
+def check_invalid_address(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
     pass
 
 
