@@ -41,9 +41,7 @@ def check_gets(state: State):
 
     buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
     buf_address = my_str_trim(buf_address)
-    print("buf_address:", buf_address)
-    print("hello")
-
+    
     check_overflow_consequences(state, sys.maxsize , buf_address, "gets")
 
 def check_strncpy(state):
@@ -64,16 +62,21 @@ def check_strncpy(state):
 def check_strcpy(state):
     print("\nAnalyzing vulnerability due to strcpy in", state)
 
-    buf2_address = find_reg_val(state, 'rdi', 'relative_rbp')
-    print("buf2_address:", buf2_address)
+    destination = find_reg_val(state, 'rdi', 'relative_rbp')
+    print("destination:", destination)
 
-    buf_address = find_reg_val(state, 'rsi', 'relative_rbp')
-    print("buf_address:", buf_address)
+    source = find_reg_val(state, 'rsi', 'relative_rbp')
+    print("source:", source)
 
     # compute input_length to be length of buffer at buf_address
     # then call
-    # check_overflow_consequences(state, input_length, buf2_address)
-
+    len_source = get_var(state.f_n,source)
+    len_dest = get_var(state.f_n,destination)
+    
+    if len_source > len_dest:
+        check_overflow_consequences(state, abs(leng1 - leng2), buf2_address, "strcpy")
+    else:
+        print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
 
 def check_fgets(state: State) -> None:
     """Assumes the buffer gets loaded from rax and the input from esi"""
