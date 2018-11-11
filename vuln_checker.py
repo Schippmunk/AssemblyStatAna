@@ -98,7 +98,7 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
         check_rbp_overflow(state, input_length, buf, dng_func)
         check_var_overflow(state, input_length, buf, dng_func)
         check_ret_overflow(state, input_length, buf, dng_func)
-        check_invalid_address()
+        check_invalid_access(state, input_length, buf, dng_func)
         
     elif buf:
         print("Buffer is of size", buf['bytes'])
@@ -109,7 +109,7 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
 
             check_rbp_overflow(state, input_length, buf, dng_func)
             check_var_overflow(state, input_length, buf, dng_func)
-            check_invalid_address()
+            check_invalid_access(state, input_length, buf, dng_func)
         else:
             print("There is no buffer overflow possible here.")
 
@@ -154,8 +154,9 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
                 jsonio.add_vulnerability(vuln)
 
 
-def check_invalid_address(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
-    pass
+def check_invalid_access(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
+    # check vor invalid access in stack of current function/canaries
+    #
 
 
 # utility functions
