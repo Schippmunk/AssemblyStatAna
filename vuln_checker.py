@@ -50,7 +50,8 @@ def check_strcpy(state):
 
 def check_fgets(state: State) -> None:
     """Assumes the buffer gets loaded from rax and the input from esi"""
-    print("\nAnalyzing vulnerability due to fgets in", state)
+    print("\nAnalyzing vulnerability due to fgets in")
+    print(state)
 
     input_len = find_reg_val(state, 'esi', 'hex_num', True)
     print("input_len:", input_len)

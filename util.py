@@ -20,10 +20,13 @@ def my_str_trim(s: str) -> str:
     return s[1:len(s) - 1]
 
 
-def prin(s: str, color: bcolors = bcolors.NONE) -> None:
+def prin(s: str, param = '', color: bcolors = bcolors.NONE) -> None:
     if DEBUG:
         if color:
             print(color)
-        pprint(s)
+        if param:
+            pprint(s, param)
+        else:
+            pprint(s)
         if color:
             print(bcolors.ENDC)
