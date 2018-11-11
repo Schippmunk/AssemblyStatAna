@@ -126,6 +126,21 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> 
     return s.reg_vals
 
 
+def add_variable_positions(var: dict) -> None:
+    """Goes through all variables of all functions.
+
+    Adds attribute rbpdistance to it, that is the decimal integer distance of it to rbp"""
+
+    for f_n in var.keys():
+        for v in var[f_n]:
+            var_address = v['address']
+            if reg_matcher['relative_rbp_trimmed']['matcher'].match(var_address):
+                var_rbp_distance = reg_matcher['relative_rbp_trimmed']['converter'](var_address)
+                v['rbp_distance'] = var_rbp_distance
+            else:
+                print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
+
+
 def print_list():
     """utility method for printing the tree"""
     for s in p:
@@ -133,11 +148,21 @@ def print_list():
 
 
 def process_json(the_data):
-    global data
-    global p
+    global data, var, p
     data = the_data
+
+    # analyze all instructions of main
     prev_reg = {}
     for inst in data['main']['instructions']:
         prev_reg = analyze_inst(inst, 'main', p, prev_reg.copy())
 
-    return [p, dangerous_functions_occurring]
+    # Get function names
+    func_names = data.keys()
+
+    # Parse vars and instrs for each function
+    var = {}
+    for f_n in func_names:
+        var[f_n] = data[f_n]['variables']
+    add_variable_positions(var)
+
+    return [p, var, dangerous_functions_occurring]

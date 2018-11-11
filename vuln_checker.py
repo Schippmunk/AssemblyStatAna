@@ -16,13 +16,7 @@ data = {}
 p = {}
 var = {}
 
-reg_matcher = {'relative_rbp_trimmed': {'matcher': re.compile('rbp-0x\d+'),
-                                        'converter': lambda x: int(x[4:], 16)},
-               'relative_rbp': {'matcher': re.compile('\[rbp-0x\d+\]'),
-                                'converter': lambda x: int(x[5:len(x) - 1], 16)},
-               'hex_num': {'matcher': re.compile('0x\d+'),
-                           'converter': lambda x: int(x, 16)},
-               'all': {'matcher': re.compile('rbp-0x\d+|\[rbp-0x\d+\]|0x\d+')}}
+
 
 
 # checking functions
@@ -70,27 +64,22 @@ def check_strncat(state):
     print("\nAnalyzing vulnerability due to strncat in", state)
 
 
-def check_gets(state):
+def check_gets(state: State):
     print("\nAnalyzing vulnerability due to gets in", state)
 
     buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
     buf_address = my_str_trim(buf_address)
-    print("buf_address:", buf_address)
-
-    # now since input can have arbitrary length
-    # find the variable at buf_address
-    # everything behind it can be overflown
-
+    
+    check_overflow_consequences(state, sys.maxsize , buf_address, "gets")
 
 def check_strncpy(state):
     print("\nAnalyzing vulnerability due to strncpy in", state)
 
-    buf2_address = find_reg_val(state, 'rdi', 'relative_rbp')
-    print("buf2_address:", buf2_address)
+    destination = find_reg_val(state, 'rdi', 'relative_rbp')
+    print("destination:", destination)
 
-    buf_address = find_reg_val(state, 'rsi', 'relative_rbp')
-    print("buf_address:", buf_address)
-
+    source = find_reg_val(state, 'rsi', 'relative_rbp')
+    print("source:", source)
     limit = find_reg_val(state, 'rdx', 'relative_rbp')
     print("limit:", buf_address)
 
@@ -100,16 +89,21 @@ def check_strncpy(state):
 def check_strcpy(state):
     print("\nAnalyzing vulnerability due to strcpy in", state)
 
-    buf2_address = find_reg_val(state, 'rdi', 'relative_rbp')
-    print("buf2_address:", buf2_address)
+    destination = find_reg_val(state, 'rdi', 'relative_rbp')
+    print("destination:", destination)
 
-    buf_address = find_reg_val(state, 'rsi', 'relative_rbp')
-    print("buf_address:", buf_address)
+    source = find_reg_val(state, 'rsi', 'relative_rbp')
+    print("source:", source)
 
     # compute input_length to be length of buffer at buf_address
     # then call
-    # check_overflow_consequences(state, input_length, buf2_address)
-
+    len_source = get_var(state.f_n,source)
+    len_dest = get_var(state.f_n,destination)
+    
+    if len_source > len_dest:
+        check_overflow_consequences(state, abs(len_source - len_dest), destination, "strcpy")
+    else:
+        print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
 
 def check_fgets(state: State) -> None:
     """Assumes the buffer gets loaded from rax and the input from esi"""
@@ -124,28 +118,38 @@ def check_fgets(state: State) -> None:
     buf_address = my_str_trim(buf_address)
     print("buf_address:", buf_address)
 
-    check_overflow_consequences(state, input_len, buf_address)
+    check_overflow_consequences(state, input_len, buf_address,"fgets")
 
 
 # helper functions for the check_* functions
 
-def check_overflow_consequences(state: State, input_length: int, buf_address: str) -> None:
+def check_overflow_consequences(state: State, input_length: int, buf_address: str, dng_func: str) -> None:
     """ Knowing the length of the input, and the address of the buf, what can happen?"""
 
     # find the buf variable among the local vars of f_n
     buf = get_var(state.f_n, buf_address)
 
-    change_var_written(buf, input_length)
+    if dng_func == "gets":
+        check_rbp_overflow(state, input_length, buf, dng_func)
+        check_var_overflow(state, input_length, buf, dng_func)
+        check_ret_overflow(state, input_length, buf, dng_func)
+        check_invalid_address()
+        return
+        
 
-    if buf:
+        
+    elif buf:
+
+        change_var_written(buf, input_length)
+
         print("Buffer is of size", buf['bytes'])
         # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
         if input_length > buf['bytes']:
             # now check what can be overflown
             print("VULNERABILITY: Buffer can be overflown by", input_length - buf['bytes'])
 
-            check_rbp_overflow(state, input_length, buf, 'fgets')
-            check_var_overflow(state, input_length, buf, 'fgets')
+            check_rbp_overflow(state, input_length, buf, dng_func)
+            check_var_overflow(state, input_length, buf, dng_func)
             check_invalid_address()
         else:
             print("There is no buffer overflow possible here.")
@@ -158,6 +162,17 @@ def check_rbp_overflow(state, input_length: int, buf, instruction_name: str) -> 
     if buf['rbp_distance'] < input_length:
         # bufferoverflow can reach rbp
         vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, instruction_name, buf['name'],
+                                           state.inst['address'])
+        jsonio.add_vulnerability(vuln)
+        
+def check_ret_overflow(state, input_length: int, buf, instruction_name: str) -> None:
+    """check for RBPOVERFLOW"""
+    print("Offset of the buf_address", buf['rbp_distance'])
+
+    #Assuming the return address is 8bytes long
+    if buf['rbp_distance']+8 < input_length:
+        # bufferoverflow can reach rbp
+        vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, instruction_name, buf['name'],
                                            state.inst['address'])
         jsonio.add_vulnerability(vuln)
 
@@ -238,17 +253,10 @@ def main(name: str):
 
     json_data = jsonio.parser(name)
 
-    # not sure if data will be needed after this, or if p is good enough
-    data = json_data['data']
-    # the variables will be needed, though
-    var = json_data['vars']
-
-    pr = process_json(data)
+    pr = process_json(json_data)
     p = pr[0]
-    dan_fun_occ = pr[1]
-
-    # update var so each variable contains it's distance from rbp as an int
-    add_variable_positions()
+    var = pr[1]
+    dan_fun_occ = pr[2]
 
     # print statements
     #print_list()
