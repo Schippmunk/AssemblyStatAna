@@ -212,15 +212,17 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
                                                        state.inst['address'], v['name'])
                     jsonio.add_vulnerability(vuln)
 
+
 def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str) -> None:
     """Check for SCORRUPTION in main"""
     if state.f_n == 'main':
-        if input_length >  buf['rbp_distance'] + 16:
+        if input_length > buf['rbp_distance'] + 16:
             vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf['name'],
                                                state.inst['address'], overflown_address='rbp+0x10')
             jsonio.add_vulnerability(vuln)
     # checking this if state.f_n is not main requires a lot more work, because we don't know how far the rbp of
     # state.f_n is a way from the rbp of main
+
 
 # utility functions
 
@@ -262,7 +264,7 @@ def main(name: str):
 
     # print statements
     # print_list()
-    pprint(var)
+    # pprint(var)
     # pprint(dangerous_functions_occurring)
 
     # analyze each dangerous function call
