@@ -41,12 +41,11 @@ def check_gets(state: State):
 def check_strncpy(state):
     print("\nAnalyzing vulnerability due to strncpy in", state)
 
-    buf2_address = find_reg_val(state, 'rdi', 'relative_rbp')
-    print("buf2_address:", buf2_address)
+    destination = find_reg_val(state, 'rdi', 'relative_rbp')
+    print("destination:", destination)
 
-    buf_address = find_reg_val(state, 'rsi', 'relative_rbp')
-    print("buf_address:", buf_address)
-
+    source = find_reg_val(state, 'rsi', 'relative_rbp')
+    print("source:", source)
     limit = find_reg_val(state, 'rdx', 'relative_rbp')
     print("limit:", buf_address)
 
@@ -68,7 +67,7 @@ def check_strcpy(state):
     len_dest = get_var(state.f_n,destination)
     
     if len_source > len_dest:
-        check_overflow_consequences(state, abs(leng1 - leng2), buf2_address, "strcpy")
+        check_overflow_consequences(state, abs(len_source - len_dest), destination, "strcpy")
     else:
         print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
 
