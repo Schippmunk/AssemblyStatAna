@@ -22,7 +22,7 @@ def parser(name):
         return None
     create_output_file()
 
-    return parse_json(data)
+    return data
 
 def parser_path(path: str) -> dict:
     """Opens JSON file and calls parse_json with it"""
@@ -51,7 +51,6 @@ def parse_json(data):
 
     # Parse vars and instrs for each function
     for f_n in func_names:
-
         result['vars'][f_n] = data[f_n]['variables']
     return result
 

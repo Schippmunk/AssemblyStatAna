@@ -171,26 +171,6 @@ def find_reg_val(state: State, reg: str, matcher: str):
         print("ERROR: unkown register value of ", reg)
 
 
-# initialization functions
-
-
-def add_variable_positions() -> None:
-    """Goes through all variables of all functions.
-
-    Adds attribute rbpdistance to it, that is the decimal integer distance of it to rbp"""
-
-    global var
-
-    for f_n in var.keys():
-        for v in var[f_n]:
-            var_address = v['address']
-            if reg_matcher['relative_rbp_trimmed']['matcher'].match(var_address):
-                var_rbp_distance = reg_matcher['relative_rbp_trimmed']['converter'](var_address)
-                v['rbp_distance'] = var_rbp_distance
-            else:
-                print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
-
-
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
                        '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
@@ -200,17 +180,10 @@ def main(name: str):
 
     json_data = jsonio.parser(name)
 
-    # not sure if data will be needed after this, or if p is good enough
-    data = json_data['data']
-    # the variables will be needed, though
-    var = json_data['vars']
-
-    pr = process_json(data)
+    pr = process_json(json_data)
     p = pr[0]
-    dan_fun_occ = pr[1]
-
-    # update var so each variable contains it's distance from rbp as an int
-    add_variable_positions()
+    var = pr[1]
+    dan_fun_occ = pr[2]
 
     # print statements
     #print_list()
