@@ -50,6 +50,8 @@ def check_strcat(state):
         total_length = dest['bytes_filled'] + src['bytes_filled']
         check_rbp_overflow(state, total_length, dest, 'strcat')
         check_var_overflow(state, total_length, dest, 'strcat')
+        check_ret_overflow(state, total_length, dest, 'strcat')
+
         check_invalid_address()
     else:
         print("There is no STRCAT overflow possible here.")
@@ -139,7 +141,8 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
 
         
     elif buf:
-
+        print(buf)
+        print(input_length)
         change_var_written(buf, input_length)
 
         print("Buffer is of size", buf['bytes'])
@@ -222,26 +225,6 @@ def find_reg_val(state: State, reg: str, matcher: str):
     else:
         print("ERROR: unkown register value of ", reg)
 
-
-# initialization functions
-
-
-def add_variable_positions() -> None:
-    """Goes through all variables of all functions.
-
-    Adds attribute rbpdistance to it, that is the decimal integer distance of it to rbp"""
-
-    global var
-
-    for f_n in var.keys():
-        for v in var[f_n]:
-            v['bytes_filled'] = 0
-            var_address = v['address']
-            if reg_matcher['relative_rbp_trimmed']['matcher'].match(var_address):
-                var_rbp_distance = reg_matcher['relative_rbp_trimmed']['converter'](var_address)
-                v['rbp_distance'] = var_rbp_distance
-            else:
-                print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
 
 
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
