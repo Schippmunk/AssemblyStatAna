@@ -51,8 +51,6 @@ def check_strcat(state):
         check_rbp_overflow(state, total_length, dest, 'strcat')
         check_var_overflow(state, total_length, dest, 'strcat')
         check_ret_overflow(state, total_length, dest, 'strcat')
-
-        check_invalid_address()
     else:
         print("There is no STRCAT overflow possible here.")
 
@@ -83,7 +81,7 @@ def check_strncpy(state):
     source = find_reg_val(state, 'rsi', 'relative_rbp')
     print("source:", source)
     limit = find_reg_val(state, 'rdx', 'relative_rbp')
-    print("limit:", buf_address)
+    print("limit:", limit)
 
     # now see if the minimum of the limit and the length of the buf at buf_address exceed buf2
 
@@ -135,15 +133,7 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
         check_rbp_overflow(state, input_length, buf, dng_func)
         check_var_overflow(state, input_length, buf, dng_func)
         check_ret_overflow(state, input_length, buf, dng_func)
-<<<<<<< HEAD
         check_invalid_access(state, input_length, buf, dng_func)
-=======
-        check_invalid_address()
-        return
-        
-
->>>>>>> f804afc5098712f4714198e2f7f762929d402291
-        
     elif buf:
         print(buf)
         print(input_length)
@@ -205,7 +195,7 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
 def check_invalid_access(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
     # check vor invalid access in stack of current function/canaries
     #
-
+    pass
 
 # utility functions
 
