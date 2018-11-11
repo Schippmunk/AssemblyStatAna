@@ -17,47 +17,40 @@ p = {}
 var = {}
 
 
-
-
 # checking functions
 
 def change_var_written(v, new_bytes):
-
     v['bytes_filled'] = v['bytes_filled'] + new_bytes
+
 
 def check_strcat(state):
     print("\nAnalyzing vulnerability due to strcat in", state)
 
-    #source
+    # source
     src_address = my_str_trim(find_reg_val(state, 'rsi', 'relative_rbp'))
     print("src_address:", src_address)
 
-    #dest
+    # dest
     dest_address = my_str_trim(find_reg_val(state, 'rdi', 'relative_rbp'))
     print("dest_dress:", dest_address)
 
     src = get_var(state.f_n, src_address)
     dest = get_var(state.f_n, dest_address)
- 
+
     print("Source has {} bytes filled".format(src['bytes_filled']))
     print("Destination has {} out of {} bytes filled".format(dest['bytes_filled'], dest['bytes']))
 
     # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
-    if src['bytes_filled'] > (dest['bytes'] - dest['bytes_filled']) :
+    if src['bytes_filled'] > (dest['bytes'] - dest['bytes_filled']):
         # now check what can be overflown
         print("STRCAT VULNERABILITY: Buffer {} can be overflown by buffer {}".format(dest['name'], src['name']))
-        
+
         total_length = dest['bytes_filled'] + src['bytes_filled']
         check_rbp_overflow(state, total_length, dest, 'strcat')
         check_var_overflow(state, total_length, dest, 'strcat')
         check_ret_overflow(state, total_length, dest, 'strcat')
     else:
         print("There is no STRCAT overflow possible here.")
-
-  
-
-    
-
 
 
 def check_strncat(state):
@@ -69,8 +62,9 @@ def check_gets(state: State):
 
     buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
     buf_address = my_str_trim(buf_address)
-    
-    check_overflow_consequences(state, sys.maxsize , buf_address, "gets")
+
+    check_overflow_consequences(state, sys.maxsize, buf_address, "gets")
+
 
 def check_strncpy(state):
     print("\nAnalyzing vulnerability due to strncpy in", state)
@@ -100,13 +94,14 @@ def check_strcpy(state):
     source = my_str_trim(source)
     destination = my_str_trim(destination)
 
-    len_source = get_var(state.f_n,source)
-    len_dest = get_var(state.f_n,destination)
-    
+    len_source = get_var(state.f_n, source)
+    len_dest = get_var(state.f_n, destination)
+
     if len_source and len_dest and len_source > len_dest:
         check_overflow_consequences(state, abs(len_source - len_dest), destination, "strcpy")
     else:
         print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
+
 
 def check_fgets(state: State) -> None:
     """Assumes the buffer gets loaded from rax and the input from esi"""
@@ -121,7 +116,7 @@ def check_fgets(state: State) -> None:
     buf_address = my_str_trim(buf_address)
     print("buf_address:", buf_address)
 
-    check_overflow_consequences(state, input_len, buf_address,"fgets")
+    check_overflow_consequences(state, input_len, buf_address, "fgets")
 
 
 # helper functions for the check_* functions
@@ -136,7 +131,6 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
         check_rbp_overflow(state, input_length, buf, dng_func)
         check_var_overflow(state, input_length, buf, dng_func)
         check_ret_overflow(state, input_length, buf, dng_func)
-        check_invalid_access(state, input_length, buf, dng_func)
     elif buf:
         print(buf)
         print(input_length)
@@ -150,7 +144,6 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
 
             check_rbp_overflow(state, input_length, buf, dng_func)
             check_var_overflow(state, input_length, buf, dng_func)
-            check_invalid_access(state, input_length, buf, dng_func)
         else:
             print("There is no buffer overflow possible here.")
 
@@ -164,14 +157,15 @@ def check_rbp_overflow(state: State, input_length: int, buf, instruction_name: s
         vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, instruction_name, buf['name'],
                                            state.inst['address'])
         jsonio.add_vulnerability(vuln)
-        
+
+
 def check_ret_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
-    """check for RBPOVERFLOW"""
+    """check for RETOVERFLOW"""
     print("Offset of the buf_address", buf['rbp_distance'])
 
-    #Assuming the return address is 8bytes long
-    if buf['rbp_distance']+8 < input_length:
-        # bufferoverflow can reach rbp
+    # Assuming the rbp is 8 bytes long
+    if buf['rbp_distance'] + 8 < input_length:
+        # bufferoverflow can reach returnaddress
         vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, instruction_name, buf['name'],
                                            state.inst['address'])
         jsonio.add_vulnerability(vuln)
@@ -182,7 +176,7 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
 
     # loop through all variables in the function
     for v in var[state.f_n]:
-        if  (v['name'] != buf['name']) and (buf['rbp_distance'] > v['rbp_distance']):
+        if (v['name'] != buf['name']) and (buf['rbp_distance'] > v['rbp_distance']):
 
             # check for each of these variables if they can be overflown
             print('Checking variable for overflow:', v['name'])
@@ -191,19 +185,16 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
             # buffer_address and input_address
             if buf['rbp_distance'] - v['rbp_distance'] < input_length:
                 if v['type'] == 'padding':
+                    # a padding variable was overflown
                     vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, instruction_name, buf['name'],
                                                        state.inst['address'], overflown_address=v['address'])
                     jsonio.add_vulnerability(vuln)
                 else:
+                    # an actual variable was overflown
                     vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, instruction_name, buf['name'],
                                                        state.inst['address'], v['name'])
                     jsonio.add_vulnerability(vuln)
 
-
-def check_invalid_access(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
-    # check vor invalid access in stack of current function/canaries
-    #
-    pass
 
 # utility functions
 
@@ -229,7 +220,6 @@ def find_reg_val(state: State, reg: str, matcher: str):
         print("ERROR: unkown register value of ", reg)
 
 
-
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
                        '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
@@ -245,9 +235,9 @@ def main(name: str):
     dan_fun_occ = pr[2]
 
     # print statements
-    #print_list()
+    # print_list()
     pprint(var)
-    #pprint(dangerous_functions_occurring)
+    # pprint(dangerous_functions_occurring)
 
     # analyze each dangerous function call
     for state in dan_fun_occ:
