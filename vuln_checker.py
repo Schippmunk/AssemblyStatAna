@@ -21,9 +21,45 @@ var = {}
 
 # checking functions
 
+def change_var_written(v, new_bytes):
+
+    v['bytes_filled'] = v['bytes_filled'] + new_bytes
 
 def check_strcat(state):
     print("\nAnalyzing vulnerability due to strcat in", state)
+
+    #source
+    src_address = my_str_trim(find_reg_val(state, 'rsi', 'relative_rbp'))
+    print("src_address:", src_address)
+
+    #dest
+    dest_address = my_str_trim(find_reg_val(state, 'rdi', 'relative_rbp'))
+    print("dest_dress:", dest_address)
+
+    src = get_var(state.f_n, src_address)
+    dest = get_var(state.f_n, dest_address)
+ 
+    print("Source has {} bytes filled".format(src['bytes_filled']))
+    print("Destination has {} out of {} bytes filled".format(dest['bytes_filled'], dest['bytes']))
+
+    # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
+    if src['bytes_filled'] > (dest['bytes'] - dest['bytes_filled']) :
+        # now check what can be overflown
+        print("STRCAT VULNERABILITY: Buffer {} can be overflown by buffer {}".format(dest['name'], src['name']))
+        
+        total_length = dest['bytes_filled'] + src['bytes_filled']
+        check_rbp_overflow(state, total_length, dest, 'strcat')
+        check_var_overflow(state, total_length, dest, 'strcat')
+        check_ret_overflow(state, total_length, dest, 'strcat')
+
+        check_invalid_address()
+    else:
+        print("There is no STRCAT overflow possible here.")
+
+  
+
+    
+
 
 
 def check_strncat(state):
@@ -94,13 +130,25 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
 
     # find the buf variable among the local vars of f_n
     buf = get_var(state.f_n, buf_address)
+
     if dng_func == "gets":
         check_rbp_overflow(state, input_length, buf, dng_func)
         check_var_overflow(state, input_length, buf, dng_func)
         check_ret_overflow(state, input_length, buf, dng_func)
+<<<<<<< HEAD
         check_invalid_access(state, input_length, buf, dng_func)
+=======
+        check_invalid_address()
+        return
+        
+
+>>>>>>> f804afc5098712f4714198e2f7f762929d402291
         
     elif buf:
+        print(buf)
+        print(input_length)
+        change_var_written(buf, input_length)
+
         print("Buffer is of size", buf['bytes'])
         # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
         if input_length > buf['bytes']:
@@ -141,7 +189,7 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
 
     # loop through all variables in the function
     for v in var[state.f_n]:
-        if not v['name'] == buf['name']:
+        if  (v['name'] != buf['name']) and (buf['rbp_distance'] > v['rbp_distance']):
 
             # check for each of these variables if they can be overflown
             print('Checking variable for overflow:', v['name'])
@@ -181,6 +229,7 @@ def find_reg_val(state: State, reg: str, matcher: str):
             print("ERRROR: unknown register, or does not match", reg_val)
     else:
         print("ERROR: unkown register value of ", reg)
+
 
 
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,

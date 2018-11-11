@@ -133,6 +133,7 @@ def add_variable_positions(var: dict) -> None:
 
     for f_n in var.keys():
         for v in var[f_n]:
+            v['bytes_filled'] = 0
             var_address = v['address']
             if reg_matcher['relative_rbp_trimmed']['matcher'].match(var_address):
                 var_rbp_distance = reg_matcher['relative_rbp_trimmed']['converter'](var_address)
