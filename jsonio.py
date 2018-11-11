@@ -25,26 +25,15 @@ def parser(name):
 
 
 def parse_json(data):
-    """Creates a dictionary of the JSON data and returns it
-
-    keys are function names
-    each value is a dictionary with keys instructions, Ninstructions and variables
-    """
-    result = {}
+    result = {'data': data, 'vars': {}}
 
     # Get function names
     func_names = data.keys()
 
     # Parse vars and instrs for each function
     for f_n in func_names:
-        result[f_n] = {'instructions': data[f_n]['instructions'], 'Ninstructions': data[f_n]['Ninstructions'],
-                       'variables': data[f_n]['variables']}
 
-    for f_n in func_names:
-        result[f_n]['instructions'] = result[f_n]['instructions']
-
-    # result['main'] = func_instrs['main'][3:]
-    # pprint(result)
+        result['vars'][f_n] = data[f_n]['variables']
     return result
 
 

@@ -2,11 +2,11 @@ from pprint import pprint
 from pprint import pformat
 from util import *
 from vuln_checker import dangerous_functions
-from vuln_checker import dangerous_functions_occuring
 
 
 data = {}
 p = []
+dangerous_functions_occurring = []
 
 
 class State:
@@ -18,11 +18,14 @@ class State:
     children = []
     # the register values at this point of the execution
     reg_vals = {}
+    # if this is a call instruction, this is the name of the function that gets called
+    called_fn = ''
 
     def __repr__(self, indent=''):
-        s = indent + "Data of state. Current function: " + self.f_n
-        s = s + "\n" + indent + "Instruction:"
+        s = indent + "Data of state. Current f_n: " + self.f_n
+        s = s + "\n" + indent + "inst:"
         s = s + indent + pformat(self.inst)
+        s = s + "\n" + indent + "called_fn: " + self.called_fn
         s = s + "\n" + indent + "reg_vals:"
         s = s + indent + pformat(self.reg_vals)
         s = s + "\n" + indent + "children:\n"
@@ -38,6 +41,7 @@ class State:
 
 
 def analyze_inst(inst, f_n, append_to, prev_reg = {}):
+    global dangerous_functions_occurring
     if not prev_reg:
         if p:
             prev_reg = p[-1].reg_vals.copy()
@@ -56,12 +60,14 @@ def analyze_inst(inst, f_n, append_to, prev_reg = {}):
         called_fn_trimmed = my_str_trim(called_fn)
         if called_fn_trimmed in data.keys():
             # in this case we're calling a user defined generic function
+            s.called_fn = called_fn_trimmed
             new_reg_vals = {}
             for instr in data[called_fn_trimmed]['instructions']:
                 new_reg_vals = analyze_inst(instr, called_fn_trimmed, s.children, s.reg_vals.copy())
             s.reg_vals = new_reg_vals.copy()
         elif called_fn in dangerous_functions.keys():
-            dangerous_functions_occuring.append(s)
+            s.called_fn = called_fn
+            dangerous_functions_occurring.append(s)
     append_to.append(s)
     return s.reg_vals
 
@@ -79,6 +85,5 @@ def process_json(the_data):
     for inst in data['main']['instructions']:
         analyze_inst(inst, 'main', p)
 
-    print_list()
-    return p
+    return [p, dangerous_functions_occurring]
 

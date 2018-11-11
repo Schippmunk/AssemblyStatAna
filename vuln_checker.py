@@ -1,7 +1,9 @@
 # regular expressions used to match addresses
 import re
 
+# our other modules
 import jsonio
+import program
 
 from util import *
 
@@ -10,16 +12,19 @@ from pprint import pprint
 
 
 # holds all information about the program
-p_data = {}
-# dictionary with keys = registers and value = dictionary of value of register at each position in the program
-reg_val = {}
+data = {}
+p = {}
+var = {}
+# the basic dangerous functions we are considering
+dangerous_functions = {}
 
-reg_matcher = {'relative_rbp_trimmed': re.compile('rbp-0x\d+'),
-               'relative_rbp': re.compile('\[rbp-0x\d+\]'),
-               'hex_num': re.compile('0x\d+'),
-               'all': re.compile('rbp-0x\d+|\[rbp-0x\d+\]|0x\d+')}
-
-call_trace = ['none']
+reg_matcher = {'relative_rbp_trimmed': {'matcher': re.compile('rbp-0x\d+'),
+                                        'converter': lambda x: int(x[4:], 16)},
+               'relative_rbp': {'matcher': re.compile('\[rbp-0x\d+\]'),
+                                'converter': lambda x: int(x[5:len(x) - 1], 16)},
+               'hex_num': {'matcher': re.compile('0x\d+'),
+                           'converter': lambda x: int(x, 16)},
+               'all': {'matcher': re.compile('rbp-0x\d+|\[rbp-0x\d+\]|0x\d+')}}
 
 
 
@@ -33,15 +38,9 @@ def check_gets(f_n, instruction):
     print(instruction)
 
 
-def check_strcpy(f_n, instruction):
-    print("\nAnalyzing vulnerability due to strcpy in", f_n)
-    print(instruction)
-
-
 def check_strncpy(f_n, instruction):
     print("\nAnalyzing vulnerability due to strncpy in", f_n)
     print(instruction)
-
 
 def check_strcat(f_n, instruction):
     print("\nAnalyzing vulnerability due to strcat in", f_n)
@@ -51,64 +50,31 @@ def check_strncat(f_n, instruction):
     print("\nAnalyzing vulnerability due to strncat in", f_n)
     print(instruction)
 
+def check_strcpy(state):
+    print("\nAnalyzing vulnerability due to strcpy in", state)
 
-def check_fgets(f_n, inst):
+
+def check_fgets(state):
     """Assumes the buffer gets loaded from rax and the input from esi"""
-    print("\nAnalyzing vulnerability due to fgets in", f_n)
+    print("\nAnalyzing vulnerability due to fgets in", state)
 
-    input_len = find_len_param(f_n, inst, 'esi')
-    print("Input_len is", input_len)
+    input_len = find_reg_val(state, 'esi', 'hex_num', True)
+    print("input_len:", input_len)
 
-    buf_address = find_buf_param(f_n, inst, 'rax')
-    print("Buf_address is", buf_address)
+    buf_address = find_reg_val(state, 'rax', 'relative_rbp', False)
+    buf_address = my_str_trim(buf_address)
+    print("buf_address:", buf_address)
 
-    check_overflow_consequences(f_n, inst, input_len, buf_address)
-
-
-
-
-def find_len_param(f_n, instr, reg):
-    """ finds the the length parameter using reg_val"
-
-    It assumes that it is always loaded from reg
-    """
-
-    #return reg_val[reg][f_n][instr['pos']]
-    #return find_last_existing_entry(reg_val[reg][f_n], instr['pos'])
-    rv = find_reg_val(f_n, instr['pos'], reg)
-    if rv:
-        if reg_matcher['hex_num'].match(rv):
-            return int(rv, 16)
-        else:
-            print("ERROR: Value in rsi is not hex, but", rv)
-
-
-
-def find_buf_param(f_n, instr, reg):
-    """ finds the buffer parameter in register reg in funciton main currently at instruction instr"""
-    rv = find_reg_val(f_n, instr['pos'], reg)
-    if rv:
-        if reg_matcher['relative_rbp'].match(rv):
-            return my_str_trim(rv)
-        else:
-            print("ERROR: Value in rax is not of type relative_rbp, but", rv)
-
-
-
-
-
+    check_overflow_consequences(state, input_len, buf_address)
 
 
 # helper functions for the check_* functions
 
-
-
-
-def check_overflow_consequences(f_n, instruction, input_length, buf_address):
+def check_overflow_consequences(state, input_length, buf_address):
     """ Knowing the length of the input, and the address of the buf, what can happen?"""
 
     # find the buf variable among the local vars of f_n
-    buf = get_var(f_n, buf_address)
+    buf = get_var(state.f_n, buf_address)
     if buf:
         print("Buffer is of size", buf['bytes'])
         # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
@@ -116,11 +82,13 @@ def check_overflow_consequences(f_n, instruction, input_length, buf_address):
             # now check what can be overflown
             print("VULNERABILITY: Buffer can be overflown by", input_length - buf['bytes'])
 
-            check_rbp_overflow(f_n, instruction, input_length, buf)
-            check_var_overflow(f_n, instruction, input_length, buf)
+            check_rbp_overflow(state, input_length, buf)
+            return
+            check_var_overflow(state, input_length, buf)
             check_invalid_address()
         else:
             print("Here is no bufferoverflow possible.")
+
 
 
 def check_rbp_overflow(f_n, instruction, input_length, buf):
@@ -180,12 +148,10 @@ def get_instruction(f_n, number):
 
 def get_var(f_n, address):
     """Returns the whole variable dictionary of function f_n, if address matches the variable's address"""
-
-    for var in p_data[f_n]['variables']:
-        if var['address'] == address:
-            return var
+    for v in var[f_n]:
+        if v['address'] == address:
+            return v
     print("get_var ERROR: No such address {} in function {}".format(address, f_n))
-    return False
 
 
 def get_name_distance(var1, var2):
@@ -207,7 +173,7 @@ def get_var_distance(var1, var2):
 
 
 
-def find_reg_val(f_n, pos, reg):
+def find_reg_val_old(f_n, pos, reg):
     """ This very useful method uses reg_val to find the value of a register reg, given a function and position"""
     entry = find_last_existing_entry(reg_val[reg][f_n]['none'], pos)
 
@@ -221,17 +187,23 @@ def find_reg_val(f_n, pos, reg):
         print("ERROR: cannot find value of register {} in function {} at position {}".format(reg, f_n, pos))
         return None
 
+def find_reg_val(state, reg, matcher, apply_converter):
+    """ This very useful method uses reg_val to find the value of a register reg, given a function and position"""
+
+    reg_val = state.reg_vals[reg]
+    if reg_matcher[matcher]['matcher'].match(reg_val):
+        if apply_converter:
+            reg_val = reg_matcher[matcher]['converter'](reg_val)
+        return reg_val
+    else:
+        # TODO: find it in the parent of the state
+        print("ERRROR: unknown register, or does not match", reg_val)
+
+
 
 
 
 # initialization functions
-# the basic dangerous functions we are considering
-dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
-                       '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
-
-# The dangerous functions that occur in the program get pushed to this list in analyze_reg_val_rec
-dangerous_functions_occuring = []
-
 
 
 def add_variable_positions():
@@ -239,104 +211,49 @@ def add_variable_positions():
 
     Adds attribute rbpdistance to it, that is the decimal integer distance of it to rbp"""
 
-    global p_data
+    global var
 
-    for f_n in p_data.keys():
-        for var in p_data[f_n]['variables']:
-            var_address = var['address']
-            re_relative_address = re.compile('rbp-0x\d+')
-            if(re_relative_address.match(var_address)):
-                var_rbp_distance = int(var_address[4:], 16)
-                var['rbpdistance'] = var_rbp_distance
+    for f_n in var.keys():
+        for v in var[f_n]:
+            var_address = v['address']
+            if(reg_matcher['relative_rbp_trimmed']['matcher'].match(var_address)):
+                var_rbp_distance = reg_matcher['relative_rbp_trimmed']['converter'](var_address)
+                v['rbpdistance'] = var_rbp_distance
             else:
                 print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
 
-    print("The value of p_data is")
-    pprint(p_data)
 
-
-
-def check_buffer_vuln():
-    """Goes through the instructions, and delegates analysis of detected dangerous functions"""
-
-    #for f_n in p_data.keys():
-    #    for instr in p_data[f_n]['instructions']:
-    #        if instr['op'] == 'call':
-    #            if instr['args']['fnname'] in dangerous_functions:
-    #                dangerous_functions[instr['args']['fnname']](f_n, instr)
-    for called_fn in dangerous_functions_occuring:
-        dangerous_functions[called_fn['called_fn']](called_fn['f_n'],  called_fn['instr'])
-
-def analyze_reg_val():
-    """Calls analyze_reg_val with entry point main
-
-    keys of reg_val: registers
-    values: dictionary
-        each dictionary has one key for each function that saves a value in the register
-        the value is a dictionary
-            each key is the position of the instruction in the function that saves the value
-            the value is the value that is moved into the register
-
-    TODO: Now it is easy to retrieve the value of a register if there are no generic functions.
-    TODO: For the advanced case, it will be useful to add to the called function information on
-    TODO: where they were called in the calling function
-    """
-    analyze_reg_val_rec()
-    print("\nThe values of the registers during execution are")
-    pprint(reg_val)
-    print("\nCall Trace:")
-    pprint(call_trace)
-
-
-
-def analyze_reg_val_rec(f_n = 'main', previnst = 'none'):
-    """ sets up the global var reg_val starting at f_n
-
-    Goes through the instructions and for each mov and lea, saves the new register value in the table reg_val
-    Follows function calls
-    """
-    global reg_val
-    global call_trace
-
-    for instruction in p_data[f_n]['instructions']:
-        #print("Analyzing function {}. instruction {}".format(f_n, instruction['pos']))
-
-        pos = instruction['pos']
-        if instruction['op'] in ['mov', 'lea']:
-            reg = instruction['args']['dest']
-            val = instruction['args']['value']
-
-            if reg not in reg_val.keys():
-                reg_val[reg] = {}
-            if f_n not in reg_val[reg].keys():
-                reg_val[reg][f_n] = {}
-            if previnst not in reg_val[reg][f_n].keys():
-                reg_val[reg][f_n][previnst] = {}
-            reg_val[reg][f_n][previnst][pos] = val
-        elif instruction['op'] == 'call':
-            # follow function calls
-            called_fn = instruction['args']['fnname']
-            # remove <,>
-            called_fn_trimmed = my_str_trim(called_fn)
-            if called_fn_trimmed in p_data.keys():
-                # in this case we're calling a user defined generic function
-                call_trace.append(str(pos) + called_fn_trimmed)
-                analyze_reg_val_rec(called_fn_trimmed, f_n + str(pos))
-            elif called_fn in dangerous_functions.keys():
-                dangerous_call = {"called_fn": called_fn, "instr": instruction, "f_n": f_n}
-                dangerous_functions_occuring.append(dangerous_call)
+dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
+                           '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
 def main(name):
-    global p_data
-    p_data = jsonio.parser(name)
+    global data, var, p, dangerous_functions
 
-    if(p_data):
-        add_variable_positions()
-        analyze_reg_val()
-        check_buffer_vuln()
+
+
+
+    json_data = jsonio.parser(name)
+
+    # not sure if data will be needed after this, or if p is good enough
+    data = json_data['data']
+    var = json_data['vars']
+
+    pr = program.process_json(data)
+    p = pr[0]
+    dan_fun_occ = pr[1]
+
+    add_variable_positions()
+
+    #program.print_list()
+    pprint(var)
+    #pprint(dangerous_functions_occuring)
+
+
+
+    for state in dan_fun_occ:
+        dangerous_functions[state.called_fn](state)
 
 
 if __name__ == "__main__":
     import sys
-
     main(sys.argv[1])
