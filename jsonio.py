@@ -24,6 +24,7 @@ def parser(name):
 
     return data
 
+
 def parser_path(path: str) -> dict:
     """Opens JSON file and calls parse_json with it"""
 
@@ -57,7 +58,7 @@ def parse_json(data):
 
 def create_output_file():
     """Creates the output file with filename outputfilename"""
-    #TODO: actually create the file
+    # TODO: actually create the file
     pass
 
 
@@ -76,17 +77,22 @@ def add_vulnerability(vulnerability):
     print(util.bcolors.OKGREEN)
     pprint(vulnerability)
     print(util.bcolors.ENDC)
-    #TODO: actually add it to the file
+    # TODO: actually add it to the file
 
 
-def create_vulnerability(vulnerability='', vuln_function='', fnname='', overflow_var='', address='', overflown_var=''):
+def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflow_var='', address='', overflown_var='',
+                         overflown_address=''):
     """Produces a dictionary in the desired output format"""
+
     vuln = {
         'vulnerability': vulnerability,
-        'fnname': fnname,
-        'address': address,
+        'vuln_function': vuln_function,
+        'fnname': fn_name,
         'overflow_var': overflow_var,
-        'vuln_function': vuln_function}
-    if not vulnerability == 'RBPOVERFLOW':
+        'address': address}
+    if vulnerability not in ['RBPOVERFLOW', 'INVALIDACCS']:
         vuln['overflown_var'] = overflown_var
+    if vulnerability == 'INVALIDACCS':
+        vuln['overflown_address'] = overflown_address
+
     return vuln

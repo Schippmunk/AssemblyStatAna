@@ -97,10 +97,13 @@ def check_strcpy(state):
 
     # compute input_length to be length of buffer at buf_address
     # then call
+    source = my_str_trim(source)
+    destination = my_str_trim(destination)
+
     len_source = get_var(state.f_n,source)
     len_dest = get_var(state.f_n,destination)
     
-    if len_source > len_dest:
+    if len_source and len_dest and len_source > len_dest:
         check_overflow_consequences(state, abs(len_source - len_dest), destination, "strcpy")
     else:
         print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
@@ -187,9 +190,14 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
             # buffer_rbp_distance - variable_rbp_distance describes the distance between
             # buffer_address and input_address
             if buf['rbp_distance'] - v['rbp_distance'] < input_length:
-                vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, instruction_name, buf['name'],
-                                                   state.inst['address'], v['name'])
-                jsonio.add_vulnerability(vuln)
+                if v['type'] == 'padding':
+                    vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, instruction_name, buf['name'],
+                                                       state.inst['address'], overflown_address=v['address'])
+                    jsonio.add_vulnerability(vuln)
+                else:
+                    vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, instruction_name, buf['name'],
+                                                       state.inst['address'], v['name'])
+                    jsonio.add_vulnerability(vuln)
 
 
 def check_invalid_access(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
@@ -238,7 +246,7 @@ def main(name: str):
 
     # print statements
     #print_list()
-    #pprint(var)
+    pprint(var)
     #pprint(dangerous_functions_occurring)
 
     # analyze each dangerous function call

@@ -129,17 +129,41 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> 
 def add_variable_positions(var: dict) -> None:
     """Goes through all variables of all functions.
 
-    Adds attribute rbpdistance to it, that is the decimal integer distance of it to rbp"""
+    Adds attribute rbp_distance to it, that is the decimal integer distance of the address of the variable to rbp"
+    Adds/inititializes bytes_filled, which is updated, everytime some user function fills it
+
+    {'address': 'rbp-0x50',
+           'bytes': 64,
+           'bytes_filled': 0,
+           'name': 'buf',
+           'rbp_distance': 80,
+           'type': 'buffer'}
+    """
 
     for f_n in var.keys():
+        alloc = []
         for v in var[f_n]:
             v['bytes_filled'] = 0
             var_address = v['address']
             if reg_matcher['relative_rbp_trimmed']['matcher'].match(var_address):
                 var_rbp_distance = reg_matcher['relative_rbp_trimmed']['converter'](var_address)
                 v['rbp_distance'] = var_rbp_distance
+                alloc.append([v['rbp_distance'] - v['bytes'], v['rbp_distance']])
             else:
                 print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
+        sorted(alloc, key=lambda pair: pair[0])
+        for i in range(0, len(alloc) - 1):
+            end_this = alloc[i][1]
+            start_next = alloc[i+1][0]
+            if end_this < start_next:
+                v = {
+                    'address': 'rbp-' + hex(start_next),
+                    'bytes': start_next - end_this,
+                    'name': 'my_padding_var_' + str(i),
+                    'rbp_distance': start_next,
+                    'type': 'padding'
+                }
+                var[f_n].append(v)
 
 
 def print_list():
