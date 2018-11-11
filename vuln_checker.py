@@ -36,13 +36,16 @@ def check_strncat(state):
     print("\nAnalyzing vulnerability due to strncat in", state)
 
 
-def check_gets(state):
+def check_gets(state: State):
     print("\nAnalyzing vulnerability due to gets in", state)
 
     buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
     buf_address = my_str_trim(buf_address)
     print("buf_address:", buf_address)
+    print("hello")
 
+    check_overflow_consequences(state, sys.maxsize , buf_address, "gets")
+    
     # now since input can have arbitrary length
     # find the variable at buf_address
     # everything behind it can be overflown
@@ -90,25 +93,30 @@ def check_fgets(state: State) -> None:
     buf_address = my_str_trim(buf_address)
     print("buf_address:", buf_address)
 
-    check_overflow_consequences(state, input_len, buf_address)
+    check_overflow_consequences(state, input_len, buf_address,"fgets")
 
 
 # helper functions for the check_* functions
 
-def check_overflow_consequences(state: State, input_length: int, buf_address: str) -> None:
+def check_overflow_consequences(state: State, input_length: int, buf_address: str, dng_func: str) -> None:
     """ Knowing the length of the input, and the address of the buf, what can happen?"""
 
     # find the buf variable among the local vars of f_n
     buf = get_var(state.f_n, buf_address)
-    if buf:
+    if dng_func == "gets":
+        check_rbp_overflow(state, input_length, buf, dng_func)
+        check_var_overflow(state, input_length, buf, dng_func)
+        check_invalid_address()
+        
+    elif buf:
         print("Buffer is of size", buf['bytes'])
         # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
         if input_length > buf['bytes']:
             # now check what can be overflown
             print("VULNERABILITY: Buffer can be overflown by", input_length - buf['bytes'])
 
-            check_rbp_overflow(state, input_length, buf, 'fgets')
-            check_var_overflow(state, input_length, buf, 'fgets')
+            check_rbp_overflow(state, input_length, buf, dng_func)
+            check_var_overflow(state, input_length, buf, dng_func)
             check_invalid_address()
         else:
             print("There is no buffer overflow possible here.")
