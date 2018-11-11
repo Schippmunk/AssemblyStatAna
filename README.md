@@ -9,6 +9,9 @@ to pass parameters to function calls
 We also need to analyze the different effects of moving stuff from reg to reg,
 reg to mem etc. in program.py
 
+Some info about the calling conventions can be found here
+http://lomont.org/Math/Papers/2009/Introduction%20to%20x64%20Assembly.pdf
+
 I use the following abbreviation vor variable names
  position -> pos
  variable -> var
