@@ -1,7 +1,7 @@
 from pprint import pprint
 from pprint import pformat
 from util import *
-from vuln_checker import dangerous_functions, reg_matcher
+from vuln_checker import dangerous_functions
 
 # the raw imported json file
 data = {}
@@ -151,6 +151,7 @@ def process_json(the_data):
     global data, var, p
     data = the_data
 
+    # analyze all instructions of main
     prev_reg = {}
     for inst in data['main']['instructions']:
         prev_reg = analyze_inst(inst, 'main', p, prev_reg.copy())
@@ -162,7 +163,6 @@ def process_json(the_data):
     var = {}
     for f_n in func_names:
         var[f_n] = data[f_n]['variables']
-
     add_variable_positions(var)
 
     return [p, var, dangerous_functions_occurring]
