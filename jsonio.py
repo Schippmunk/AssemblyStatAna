@@ -24,6 +24,24 @@ def parser(name):
 
     return parse_json(data)
 
+def parser_path(path: str) -> dict:
+    """Opens JSON file and calls parse_json with it"""
+
+    global inputfilename
+    inputfilename = path
+    global outputfilename
+    outputfilename = path[:len(path) - 4] + "OURoutput.json"
+
+    try:
+        with open(inputfilename) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print("No such file or directory:", inputfilename)
+        return None
+    create_output_file()
+
+    return parse_json(data)
+
 
 def parse_json(data):
     result = {'data': data, 'vars': {}}
