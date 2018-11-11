@@ -45,11 +45,6 @@ def check_gets(state: State):
     print("hello")
 
     check_overflow_consequences(state, sys.maxsize , buf_address, "gets")
-    
-    # now since input can have arbitrary length
-    # find the variable at buf_address
-    # everything behind it can be overflown
-
 
 def check_strncpy(state):
     print("\nAnalyzing vulnerability due to strncpy in", state)
@@ -106,6 +101,7 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
     if dng_func == "gets":
         check_rbp_overflow(state, input_length, buf, dng_func)
         check_var_overflow(state, input_length, buf, dng_func)
+        check_ret_overflow(state, input_length, buf, dng_func)
         check_invalid_address()
         
     elif buf:
@@ -129,6 +125,17 @@ def check_rbp_overflow(state, input_length: int, buf, instruction_name: str) -> 
     if buf['rbp_distance'] < input_length:
         # bufferoverflow can reach rbp
         vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, instruction_name, buf['name'],
+                                           state.inst['address'])
+        jsonio.add_vulnerability(vuln)
+        
+def check_ret_overflow(state, input_length: int, buf, instruction_name: str) -> None:
+    """check for RBPOVERFLOW"""
+    print("Offset of the buf_address", buf['rbp_distance'])
+
+    #Assuming the return address is 8bytes long
+    if buf['rbp_distance']+8 < input_length:
+        # bufferoverflow can reach rbp
+        vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, instruction_name, buf['name'],
                                            state.inst['address'])
         jsonio.add_vulnerability(vuln)
 
