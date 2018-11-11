@@ -202,18 +202,22 @@ def main(name: str):
 
     # not sure if data will be needed after this, or if p is good enough
     data = json_data['data']
+    # the variables will be needed, though
     var = json_data['vars']
 
     pr = process_json(data)
     p = pr[0]
     dan_fun_occ = pr[1]
 
+    # update var so each variable contains it's distance from rbp as an int
     add_variable_positions()
 
+    # print statements
     print_list()
     pprint(var)
     pprint(dangerous_functions_occurring)
 
+    # analyze each dangerous function call
     for state in dan_fun_occ:
         dangerous_functions[state.called_fn](state)
 
