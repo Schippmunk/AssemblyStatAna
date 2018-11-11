@@ -128,9 +128,25 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
     buf = get_var(state.f_n, buf_address)
 
     if dng_func == "gets":
-        check_rbp_overflow(state, input_length, buf, dng_func)
+        # no need to check, we know it's there
+        # check_rbp_overflow(state, input_length, buf, dng_func)
+        vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, dng_func, buf['name'],
+                                           state.inst['address'])
+        jsonio.add_vulnerability(vuln)
+
         check_var_overflow(state, input_length, buf, dng_func)
-        check_ret_overflow(state, input_length, buf, dng_func)
+
+        # no need to check, we know it's there
+        # check_ret_overflow(state, input_length, buf, dng_func)
+        vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, dng_func, buf['name'],
+                                           state.inst['address'])
+        jsonio.add_vulnerability(vuln)
+
+        # no need to check, we know it's there
+        # check_s_corruption(state, input_length, buf, dng_func)
+        vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf['name'],
+                                           state.inst['address'], overflown_address='rbp+0x10')
+        jsonio.add_vulnerability(vuln)
     elif buf:
         print(buf)
         print(input_length)
