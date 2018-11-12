@@ -5,7 +5,6 @@ from pprint import pprint
 inputfilename = ''
 outputfilename = ''
 
-
 def parser(name):
     """Opens JSON file and calls parse_json with it"""
 
@@ -59,6 +58,7 @@ def parse_json(data):
 def create_output_file():
     """Creates the output file with filename outputfilename"""
     # TODO: actually create the file
+    open(outputfilename,"w+")
     pass
 
 
@@ -78,6 +78,14 @@ def add_vulnerability(vulnerability):
     pprint(vulnerability)
     print(util.bcolors.ENDC)
     # TODO: actually add it to the file
+    
+    f= open(outputfilename,"a")
+    #f.write(str(vulnerability))
+    json.dump(vulnerability,f,indent=4)
+    f.write("\n")
+    f.close()
+    
+    
 
 
 def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflow_var='', address='', overflown_var='',
