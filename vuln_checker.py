@@ -258,6 +258,7 @@ def main(name: str):
     json_data = jsonio.parser(name)
 
     pr = process_json(json_data)
+    return
     p = pr[0]
     var = pr[1]
     dan_fun_occ = pr[2]

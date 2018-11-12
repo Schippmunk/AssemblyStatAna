@@ -10,6 +10,16 @@ p = []
 # the states of p containing a call to a dangerous function
 dangerous_functions_occurring = []
 
+reg_match = {
+    'dword_address': {'m': re.compile('DWORD PTR \[(rbp|rip)[+-]0x[0-9a-f]+\]'),
+                      'c': lambda x: int(x[15:len(x) - 1], 16)},
+    'qword_address': {'m': re.compile('DWORD PTR \[(rbp|rip)[+-]0x[0-9a-f]+\]'),
+                      'c': lambda x: int(x[15:len(x) - 1], 16)},
+    'rbp_address': {'m': re.compile('\[rbp-0x[0-9a-f]+\]'), 'c': lambda x: int(x[5:len(x) - 1], 16)},
+    'rbp_address_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
+    'hex_num': {'m': re.compile('0x[0-9a-f]+'), 'c': lambda x: int(x, 16)}
+}
+
 registers = {'rax': '', 'rbx': '', 'rcx': '', 'rdx': '', 'rdi': '', 'rsi': '', 'r8': '', 'r9': '', 'r10': '',
                 'r11': '', 'r12': '', 'r13': '', 'r14': '', 'r15': '', 'rbp': '', 'rsp': 0, 'rip': ''}
 reg_names = registers.keys()
@@ -24,7 +34,7 @@ class State:
     # if the instruction is a function call, this will be a list of the instruction of the functions called
     children = []
     # the register values at this point of the execution
-    reg_vals = {}
+    reg_vals = {'rsp': [0, 0, 0], 'rbp': [0, 0, 0]} # [value, type, from register]
     # if this is a call instruction, this is the name of the function that gets called
     # it exists just for convenience, so it doesn't have to be looked up from State.inst
     # and it provides an easy way of checking if the instruction is a call
@@ -52,7 +62,7 @@ class State:
         This is necessary here, if we want to implmement generic function calls, or programs with a more complex main fn
         """
         print('\n-----------------------', self.f_n)
-        print(self.reg_vals)
+
         print(inst + " " + reg + " " + val)
         done = False
         if reg in reg_names:  # dest is a register
@@ -61,66 +71,11 @@ class State:
                     # put content of the register val into reg
                     self.reg_vals[reg] = self.reg_vals[val]
                     done = True
-                    elif reg_match['hex_num']['m'].match(val):  # val is a hex number
-                    # convert to int
-                    val = reg_match['hex_num']['c'](val)
-                    if inst == 'sub':
-                        self.reg_vals[reg] = self.reg_vals[reg] - val
-                        done = True
-                    elif inst == 'mov':
-                        self.reg_vals[reg] = val
-                        done = True
-                elif reg_match['qword_address']['m'].match(val):  # value is qword memory
-                    # load qword bytes from stack and put them in reg
-                    done = True
-                    pass
-
-                elif reg_match['rbp_address']['m'].match(val):  # value is like [rbp-0x50]
-                    val = reg_match['rbp_address']['c'](val)
-                    if inst == 'mov':
-                        # put into reg the next 8 bytes at memory -val
-                        done = True
-                        pass
-                    elif inst == 'lea':
-                        # put the addres, that is the offset from rbp into the register
-                        self.reg_vals[reg] = -val
-                        done = True
-            elif reg_match['dword_address']['m'].match(reg):  # register is memory, dword long
-                # offset from rbp
-                reg_offset = reg_match['dword_address']['c'](reg)
-                if 'len' in self.stack[-reg_offset]:  # one of the local variables
-                    if reg_match['hex_num']['m'].match(val):  # val is a hex number
-                        # convert to int
-                        val = reg_match['hex_num']['c'](val)
-                        self.stack[-reg_offset]['val'] = val
-                        # self.stack[-reg_offset] = {
-                        #    'len': 4,  # dwords are 4 bytes long
-                        #    'val': val
-                        # }
-                        done = True
-        if val in self.reg_vals.keys():
-            # in this case, val is another register which we know the value of, so we use that value instead
-            val = self.reg_vals[val]
-
-        self.reg_vals[reg] = val
-        return
-        try:
-            if reg[0:1] == 'e' and 'r' + reg[1:] in self.reg_vals.keys():
-                reg = 'r' + reg[1:]
-        except AttributeError:
-            print("==================================")
-            pprint(self.reg_vals)
-        if reg in self.reg_vals.keys():  # dest is a register
-            if val in self.reg_vals.keys():  # val is a register
-                if inst == 'mov':
-                    # put content of the register val into reg
-                    self.reg_vals[reg] = self.reg_vals[val]
-                    done = True
             elif reg_match['hex_num']['m'].match(val):  # val is a hex number
                 # convert to int
                 val = reg_match['hex_num']['c'](val)
                 if inst == 'sub':
-                    self.reg_vals[reg] = self.reg_vals[reg] - val
+                    self.reg_vals[reg] = [self.reg_vals[reg][0] - val,
                     done = True
                 elif inst == 'mov':
                     self.reg_vals[reg] = val
@@ -140,19 +95,29 @@ class State:
                     # put the addres, that is the offset from rbp into the register
                     self.reg_vals[reg] = -val
                     done = True
-        elif reg_match['dword_address']['m'].match(reg):  # register is memory, dword long
+        if done:
+            print(self.reg_vals)
+        """elif reg_match['dword_address']['m'].match(reg):  # register is memory, dword long
             # offset from rbp
             reg_offset = reg_match['dword_address']['c'](reg)
-            if 'len' in self.stack[-reg_offset]: # one of the local variables
+            if 'len' in self.stack[-reg_offset]:  # one of the local variables
                 if reg_match['hex_num']['m'].match(val):  # val is a hex number
                     # convert to int
                     val = reg_match['hex_num']['c'](val)
                     self.stack[-reg_offset]['val'] = val
-                    #self.stack[-reg_offset] = {
+                    # self.stack[-reg_offset] = {
                     #    'len': 4,  # dwords are 4 bytes long
                     #    'val': val
-                    #}
-                    done = True
+                    # }
+                    done = True"""
+        return
+        try:
+            if reg[0:1] == 'e' and 'r' + reg[1:] in self.reg_vals.keys():
+                reg = 'r' + reg[1:]
+        except AttributeError:
+            print("==================================")
+            pprint(self.reg_vals)
+
 
 
 def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> dict:
@@ -272,10 +237,10 @@ def process_json(the_data):
     data = the_data
 
     # analyze all instructions of main
-    prev_reg = {}
+    prev_reg = {'rsp': 0, 'rbp': 0}
     for inst in data['main']['instructions']:
         prev_reg = analyze_inst(inst, 'main', p, prev_reg.copy())
-
+    return
     # Get function names
     func_names = data.keys()
 
