@@ -10,6 +10,8 @@ p = []
 # the states of p containing a call to a dangerous function
 dangerous_functions_occurring = []
 
+registers = ()
+
 
 class State:
     """Describes the state of the program after execution of the instruction inst"""
@@ -47,6 +49,9 @@ class State:
         TODO: Look at the different ways of moving data between memory and registers, as recommended in project.
         This is necessary here, if we want to implmement generic function calls, or programs with a more complex main fn
         """
+        print('\n-----------------------', self.f_n)
+        print(self.reg_vals)
+        print(inst + " " + reg + " " + val)
         if inst == 'sub':
             val = reg + "-" + str(val)
         elif inst == 'mov':
@@ -58,6 +63,56 @@ class State:
             val = self.reg_vals[val]
 
         self.reg_vals[reg] = val
+        return
+        try:
+            if reg[0:1] == 'e' and 'r' + reg[1:] in self.reg_vals.keys():
+                reg = 'r' + reg[1:]
+        except AttributeError:
+            print("==================================")
+            pprint(self.reg_vals)
+        if reg in self.reg_vals.keys():  # dest is a register
+            if val in self.reg_vals.keys():  # val is a register
+                if inst == 'mov':
+                    # put content of the register val into reg
+                    self.reg_vals[reg] = self.reg_vals[val]
+                    done = True
+            elif reg_match['hex_num']['m'].match(val):  # val is a hex number
+                # convert to int
+                val = reg_match['hex_num']['c'](val)
+                if inst == 'sub':
+                    self.reg_vals[reg] = self.reg_vals[reg] - val
+                    done = True
+                elif inst == 'mov':
+                    self.reg_vals[reg] = val
+                    done = True
+            elif reg_match['qword_address']['m'].match(val):  # value is qword memory
+                # load qword bytes from stack and put them in reg
+                done = True
+                pass
+
+            elif reg_match['rbp_address']['m'].match(val):  # value is like [rbp-0x50]
+                val = reg_match['rbp_address']['c'](val)
+                if inst == 'mov':
+                    # put into reg the next 8 bytes at memory -val
+                    done = True
+                    pass
+                elif inst == 'lea':
+                    # put the addres, that is the offset from rbp into the register
+                    self.reg_vals[reg] = -val
+                    done = True
+        elif reg_match['dword_address']['m'].match(reg):  # register is memory, dword long
+            # offset from rbp
+            reg_offset = reg_match['dword_address']['c'](reg)
+            if 'len' in self.stack[-reg_offset]: # one of the local variables
+                if reg_match['hex_num']['m'].match(val):  # val is a hex number
+                    # convert to int
+                    val = reg_match['hex_num']['c'](val)
+                    self.stack[-reg_offset]['val'] = val
+                    #self.stack[-reg_offset] = {
+                    #    'len': 4,  # dwords are 4 bytes long
+                    #    'val': val
+                    #}
+                    done = True
 
 
 def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> dict:
