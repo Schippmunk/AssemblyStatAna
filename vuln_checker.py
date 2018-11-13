@@ -61,11 +61,32 @@ def check_strncat(state):
 def check_gets(state: State):
     print("\nAnalyzing vulnerability due to gets in", state)
 
-    buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
+    buf_address = state.get_reg_val('rdi')
     print("buf_address:", buf_address)
-    buf_address = my_str_trim(buf_address)
 
-    check_overflow_consequences(state, sys.maxsize, buf_address, "gets")
+    seg = state.get_seg(buf_address)
+    print('seg:', seg)
+
+    # no need to check, we know it's there
+    # check_rbp_overflow(state, input_length, buf, dng_func)
+    vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, 'gets', seg.var['name'],
+                                       state.inst['address'])
+    jsonio.add_vulnerability(vuln)
+
+    return
+    check_var_overflow(state, input_length, buf, dng_func)
+
+    # no need to check, we know it's there
+    # check_ret_overflow(state, input_length, buf, dng_func)
+    vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, dng_func, buf['name'],
+                                       state.inst['address'])
+    jsonio.add_vulnerability(vuln)
+
+    # no need to check, we know it's there
+    # check_s_corruption(state, input_length, buf, dng_func)
+    vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf['name'],
+                                       state.inst['address'], overflown_address='rbp+0x10')
+    jsonio.add_vulnerability(vuln)
 
 
 def check_strncpy(state):
@@ -142,25 +163,7 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: st
     buf = get_var(state.f_n, buf_address)
 
     if dng_func == "gets":
-        # no need to check, we know it's there
-        # check_rbp_overflow(state, input_length, buf, dng_func)
-        vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, dng_func, buf['name'],
-                                           state.inst['address'])
-        jsonio.add_vulnerability(vuln)
-
-        check_var_overflow(state, input_length, buf, dng_func)
-
-        # no need to check, we know it's there
-        # check_ret_overflow(state, input_length, buf, dng_func)
-        vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, dng_func, buf['name'],
-                                           state.inst['address'])
-        jsonio.add_vulnerability(vuln)
-
-        # no need to check, we know it's there
-        # check_s_corruption(state, input_length, buf, dng_func)
-        vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf['name'],
-                                           state.inst['address'], overflown_address='rbp+0x10')
-        jsonio.add_vulnerability(vuln)
+        pass
     elif buf:
         change_var_written(buf, input_length)
 
@@ -247,16 +250,6 @@ def get_var(f_n: str, address: str) -> dict:
     print("get_var ERROR: No such address {} in function {}".format(address, f_n))
 
 
-def find_reg_val(state: State, reg: str, matcher: str):
-    """ This very useful method uses reg_val to find the value of a register reg, given a function and position"""
-
-    if reg in state.reg_vals.keys():
-        reg_val = state.reg_vals[reg]
-        return reg_val
-    else:
-        print("ERROR: unkown register value of ", reg)
-
-
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
                        '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
@@ -272,10 +265,10 @@ def main(name: str):
     dan_fun_occ = pr[2]
 
     # print statements
-    # print_list()
+    print_list()
     # pprint(var)
     # pprint(dangerous_functions_occurring)
-    return
+
     # analyze each dangerous function call
     for state in dan_fun_occ:
         dangerous_functions[state.called_fn](state)

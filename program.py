@@ -47,6 +47,12 @@ class Register:
         else:
             self.val = val
 
+    def get_val(self, is_e_val: bool = False):
+        if is_e_val:
+            return self.e_val
+        else:
+            return self.val
+
     def __init__(self, name: str, val: int = -1):
         self.name = name
         if name[0] == 'e':
@@ -82,10 +88,11 @@ class Segment:
         self.var = var
 
     def __repr__(self):
+        appendix = ''
         if self.val:
             appendix = " with value " + str(self.val)
-        else:
-            appendix = ''
+        if self.var:
+            appendix = " with var " + str(self.var)
         return "Segment of " + str(self.bytes) + " bytes" + appendix
 
 
@@ -127,6 +134,16 @@ class State:
             s = s + child.__repr__(indent + "\t")
         s = s + indent + "end of state\n"
         return s
+
+    def get_seg(self, address, at_e_val: bool=False) -> Segment:
+        if isinstance(address, int):
+            return self.stack[address]
+        elif at_e_val or isinstance(address, Register):
+            return self.stack[address.get_val(at_e_val)]
+
+    def get_reg_val(self, reg: str) -> Register:
+        return self.reg_vals[reg]
+
 
     def add_reg_val(self, inst: str, reg: str, val: str) -> None:
         """Adds to the registers of the current state the new value at register reg. How this is handled
@@ -324,6 +341,8 @@ def add_variable_positions(var: dict, stack: dict) -> None:
                     'type': 'padding'
                 }
                 var[f_n].append(v)
+
+
 
 
 def print_list():
