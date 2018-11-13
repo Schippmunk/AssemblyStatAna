@@ -62,6 +62,7 @@ def check_gets(state: State):
     print("\nAnalyzing vulnerability due to gets in", state)
 
     buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
+    print("buf_address:", buf_address)
     buf_address = my_str_trim(buf_address)
 
     check_overflow_consequences(state, sys.maxsize, buf_address, "gets")
@@ -121,12 +122,12 @@ def check_fgets(state: State) -> None:
     print("\nAnalyzing vulnerability due to fgets in")
     print(state)
 
-    input_len = find_reg_val(state, 'esi', 'hex_num')
-    input_len = reg_matcher['hex_num']['converter'](input_len)
+    input_len = find_reg_val(state, 'rsi', 'hex_num')
+    #input_len = reg_matcher['hex_num']['converter'](input_len)
     print("input_len:", input_len)
 
     buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
-    buf_address = my_str_trim(buf_address)
+    #buf_address = my_str_trim(buf_address)
     print("buf_address:", buf_address)
 
     check_overflow_consequences(state, input_len, buf_address, "fgets")
@@ -251,11 +252,7 @@ def find_reg_val(state: State, reg: str, matcher: str):
 
     if reg in state.reg_vals.keys():
         reg_val = state.reg_vals[reg]
-        if reg_matcher[matcher]['matcher'].match(reg_val):
-            return reg_val
-        else:
-            # TODO: find it in the parent of the state
-            print("ERRROR: unknown register, or does not match", reg_val)
+        return reg_val
     else:
         print("ERROR: unkown register value of ", reg)
 
@@ -270,7 +267,6 @@ def main(name: str):
     json_data = jsonio.parser(name)
 
     pr = process_json(json_data)
-    return
     p = pr[0]
     var = pr[1]
     dan_fun_occ = pr[2]
@@ -283,7 +279,7 @@ def main(name: str):
     # analyze each dangerous function call
     for state in dan_fun_occ:
         dangerous_functions[state.called_fn](state)
-    
+    return
     jsonio.write_json()
 
 

@@ -65,6 +65,8 @@ class State:
         s = s + "\n" + indent + "called_fn: " + self.called_fn
         s = s + "\n" + indent + "reg_vals:"
         s = s + indent + pformat(self.reg_vals)
+        s = s + "\n" + indent + "stack:"
+        s = s + indent + pformat(self.stack)
         s = s + "\n" + indent + "children:\n"
         for child in self.children:
             s = s + child.__repr__(indent + "\t")
@@ -144,16 +146,16 @@ class State:
                             self.stack[-reg_offset]['val'] = val
                             done = True
         if done:
-            print("done")
-            #print(self.stack)
-            #print(self.reg_vals)
+            #print("done")
+            print(self.stack)
+            print(self.reg_vals)
         else:
             print(bcolors.FAIL)
             print("INSTRUCTION NOT ANALYZED")
             print(bcolors.ENDC)
 
 
-def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> dict:
+def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> list:
     """ Analyzes the instruction inst and creates a State object appended to append_to
 
     :param inst: An instruction as in the given JSON format
