@@ -1,18 +1,19 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
-
-void fun1(char buf[]){
-  char buf2[16];
-  strcpy(buf2, buf);
-}
+#include <string.h>
 
 int main() {
+  char buf3[32];
   int control;
-  char buf[64];
+  char buf2[16];
+  char buf1[64];
 
   control = 13;
-  fgets(buf, 20, stdin);
+  fgets(buf1, 64, stdin);
+  strcpy(buf2, buf1);
+  strcpy(buf3, buf1);
 
-  fun1(buf);
+
+  return 0;
 }

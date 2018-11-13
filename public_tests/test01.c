@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 int main() {
   int control;
-  char buf[64];
+  char buf1[64];
 
   control = 1;
-  fgets(buf, 64, stdin);
+  gets(buf1);
 
+  return 0;
 }

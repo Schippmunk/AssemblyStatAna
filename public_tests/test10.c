@@ -4,13 +4,12 @@
 #include <string.h>
 
 int main() {
-  int control;
-  char buf2[32];
+  char buf2[64];
   char buf1[64];
 
-  control = 4;
-  fgets(buf1, 49, stdin);
-  strcpy(buf2, buf1);
+  fgets(buf1, 64, stdin);
+  fgets(buf2, 32, stdin);
+  strcat(buf2, buf1);
 
   return 0;
 }

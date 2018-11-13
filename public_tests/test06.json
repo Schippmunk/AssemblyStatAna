@@ -1,6 +1,6 @@
 {
     "main": {
-        "Ninstructions": 17,
+        "Ninstructions": 18,
         "variables": [
             {
                 "bytes": 4,
@@ -53,7 +53,7 @@
                 "pos": 3,
                 "args": {
                     "dest": "DWORD PTR [rbp-0x4]",
-                    "value": "0x3"
+                    "value": "0x6"
                 },
                 "address": "40056f"
             },
@@ -81,7 +81,7 @@
                 "pos": 6,
                 "args": {
                     "dest": "esi",
-                    "value": "0x2d"
+                    "value": "0x40"
                 },
                 "address": "400581"
             },
@@ -107,7 +107,7 @@
                 "op": "lea",
                 "pos": 9,
                 "args": {
-                    "dest": "rdx",
+                    "dest": "rcx",
                     "value": "[rbp-0x70]"
                 },
                 "address": "40058e"
@@ -125,8 +125,8 @@
                 "op": "mov",
                 "pos": 11,
                 "args": {
-                    "dest": "rsi",
-                    "value": "rdx"
+                    "dest": "edx",
+                    "value": "0x20"
                 },
                 "address": "400596"
             },
@@ -134,38 +134,47 @@
                 "op": "mov",
                 "pos": 12,
                 "args": {
-                    "dest": "rdi",
-                    "value": "rax"
+                    "dest": "rsi",
+                    "value": "rcx"
                 },
-                "address": "400599"
-            },
-            {
-                "op": "call",
-                "pos": 13,
-                "args": {
-                    "fnname": "<strcpy@plt>",
-                    "address": "400470"
-                },
-                "address": "40059c"
+                "address": "40059b"
             },
             {
                 "op": "mov",
+                "pos": 13,
+                "args": {
+                    "dest": "rdi",
+                    "value": "rax"
+                },
+                "address": "40059e"
+            },
+            {
+                "op": "call",
                 "pos": 14,
                 "args": {
-                    "dest": "eax",
-                    "value": "0x0"
+                    "fnname": "<strncpy@plt>",
+                    "address": "400470"
                 },
                 "address": "4005a1"
             },
             {
-                "op": "leave",
+                "op": "mov",
                 "pos": 15,
+                "args": {
+                    "dest": "eax",
+                    "value": "0x0"
+                },
                 "address": "4005a6"
             },
             {
-                "op": "ret",
+                "op": "leave",
                 "pos": 16,
-                "address": "4005a7"
+                "address": "4005ab"
+            },
+            {
+                "op": "ret",
+                "pos": 17,
+                "address": "4005ac"
             }
         ]
     }

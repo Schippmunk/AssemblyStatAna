@@ -4,15 +4,12 @@
 #include <string.h>
 
 int main() {
-  int control;
-  char buf2[32];
+  char buf2[64];
   char buf1[64];
 
-  control = 2;
-  // do not forget that fgets reads N-1 chars but writes 32
-  // buf1[32] = '\0'
   fgets(buf1, 32, stdin);
-  strcpy(buf2, buf1);
+  fgets(buf2, 32, stdin);
+  strcat(buf2, buf1); // buf2 is now at most 31 + 31 bytes + '\0'
 
   return 0;
 }

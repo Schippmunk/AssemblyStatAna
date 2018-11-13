@@ -8,9 +8,9 @@ int main() {
   char buf2[32];
   char buf1[64];
 
-  control = 4;
-  fgets(buf1, 49, stdin);
-  strcpy(buf2, buf1);
+  control = 6;
+  fgets(buf1, 64, stdin);
+  strncpy(buf2, buf1, 32);
 
   return 0;
 }

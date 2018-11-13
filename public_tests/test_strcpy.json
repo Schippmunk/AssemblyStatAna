@@ -3,16 +3,16 @@
         "Ninstructions": 11,
         "variables": [
             {
-                "bytes": 4,
-                "type": "int",
-                "name": "control",
-                "address": "rbp-0x4"
-            },
-            {
                 "bytes": 64,
                 "type": "buffer",
                 "name": "buf1",
                 "address": "rbp-0x50"
+            },
+            {
+                "bytes": 64,
+                "type": "buffer",
+                "name": "buf2",
+                "address": "rbp-0x114"
             }
         ],
         "instructions": [

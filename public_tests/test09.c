@@ -4,15 +4,12 @@
 #include <string.h>
 
 int main() {
-  char buf4[64];
-  char buf3[64];
-  char buf2[32];
+  char buf2[64];
   char buf1[64];
 
   fgets(buf1, 64, stdin);
-  strncpy(buf2, buf1, 32);
-  strncpy(buf3, buf1, 64);
-  strcpy(buf4, buf2);
+  fgets(buf2, 32, stdin);
+  strncat(buf2, buf1, 32);  // buf2 is now at most 31bytes + 32 (new) + '\0'
 
   return 0;
 }
