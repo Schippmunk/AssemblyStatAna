@@ -282,6 +282,8 @@ def main(name: str):
     # analyze each dangerous function call
     for state in dan_fun_occ:
         dangerous_functions[state.called_fn](state)
+    
+    jsonio.write_json()
 
 
 if __name__ == "__main__":
