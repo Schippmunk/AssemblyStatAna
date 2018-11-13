@@ -93,7 +93,7 @@ def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflo
         'fnname': fn_name,
         'overflow_var': overflow_var,
         'address': address}
-    if vulnerability not in ['RBPOVERFLOW', 'INVALIDACCS', 'SCORRUPTION']:
+    if vulnerability not in ['RBPOVERFLOW', 'INVALIDACCS', 'SCORRUPTION','RETOVERFLOW']:
         vuln['overflown_var'] = overflown_var
     elif vulnerability in ['INVALIDACCS', 'SCORRUPTION']:
         vuln['overflown_address'] = overflown_address
