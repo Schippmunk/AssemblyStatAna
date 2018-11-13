@@ -1,5 +1,6 @@
 from pprint import pprint
 from pprint import pformat
+from copy import copy, deepcopy
 from util import *
 
 # the raw imported json file
@@ -27,7 +28,65 @@ dangerous_functions = ['<gets@plt>', '<strcpy@plt>', '<strcat@plt>',
 
 registers = {'rax': '', 'rbx': '', 'rcx': '', 'rdx': '', 'rdi': '', 'rsi': '', 'r8': '', 'r9': '', 'r10': '',
              'r11': '', 'r12': '', 'r13': '', 'r14': '', 'r15': '', 'rbp': '', 'rsp': 0, 'rip': ''}
-reg_names = registers.keys()
+reg_names = ['rax', 'rbx', 'rcx', 'rdx', 'rdi', 'rsi', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbp',
+             'rsp', 'rip']
+
+
+class Register:
+    name = ''
+    # value inserted at beginning
+    val = None
+    # value in lower half
+    e_val = None
+    has_e_val = False
+
+    def set_val(self, val: int, is_e_val: bool = False) -> None:
+        if is_e_val:
+            self.e_val = val
+            self.has_e_val = True
+        else:
+            self.val = val
+
+    def __init__(self, name: str, val: int = -1):
+        self.name = name
+        if name[0] == 'e':
+            self.e_val = val
+            self.has_e_val = True
+        else:
+            self.val = val
+
+    def __repr__(self):
+        if self.has_e_val:
+            appendix = ' | ' + str(self.e_val)
+        else:
+            appendix = ''
+        return "Register " + self.name + ':' + str(self.val) + appendix
+
+
+class Segment:
+    relative_to = 'rbp'
+    bytes = 0
+    val = None
+    var = None
+
+    def __init__(self, bytes, var: dict=None):
+        if isinstance(bytes, int):
+            self.bytes = bytes
+        elif bytes == 'QWORD':
+            self.bytes = 8
+        elif bytes == 'DWORD':
+            self.bytes = 4
+        elif bytes == 'rbp':
+            self.bytes = -8
+
+        self.var = var
+
+    def __repr__(self):
+        if self.val:
+            appendix = " with value " + str(self.val)
+        else:
+            appendix = ''
+        return "Segment of " + str(self.bytes) + " bytes" + appendix
 
 
 class State:
@@ -43,14 +102,10 @@ class State:
     children = []
 
     # the register values at this point of the execution
-    # [value, type, from register]
-    # value is an integer. if type = a (address) it describes the offset from register
-    # if type = v (value) it is just a value. in that case register=None
-    # if key=rbp, reg denotes the name of the function of which it is the rbp
-    reg_vals = {'rsp': {'val': 0, 'typ': 'a', 'reg': 'rbp'}, 'rbp': {'val': 0, 'typ': 'a', 'reg': 'main'}}
+    reg_vals = {}
 
     # the stack at this point of the execution
-    stack = {'0': {'len': '-8'}}
+    stack = {}
 
     # if this is a call instruction, this is the name of the function that gets called
     # it exists just for convenience, so it doesn't have to be looked up from State.inst
@@ -76,35 +131,46 @@ class State:
     def add_reg_val(self, inst: str, reg: str, val: str) -> None:
         """Adds to the registers of the current state the new value at register reg. How this is handled
         depends on the instruction inst, which is sub, mov or lea.
-
-        TODO: Look at the different ways of moving data between memory and registers, as recommended in project.
-        This is necessary here, if we want to implmement generic function calls, or programs with a more complex main fn
         """
+
         print('\n-----------------------', self.f_n)
         print(inst + " " + reg + " " + val)
+
         done = False
+        the_reg = None
+
         if reg[0] == 'e':
-            print('converted inst to')
-            reg = 'r' + reg[1:]
-            print(inst + " " + reg + " " + val)
-        if reg in reg_names:  # dest is a register
-            if reg not in self.reg_vals.keys():
-                self.reg_vals[reg] = {}
+            reg2 = 'r' + reg[1:]
+            is_e = True
+        else:
+            reg2 = reg
+            is_e = False
+
+        if reg2 in reg_names:  # dest is a register
+
+            if reg2 in self.reg_vals.keys(): # register already exists
+                the_reg = self.reg_vals[reg2]
+            else:
+                the_reg = Register(reg)
+
+
             if val in reg_names:  # val is a register
                 if inst == 'mov':
                     # put content of the register val into reg
-                    self.reg_vals[reg] = self.reg_vals[val]
+                    the_reg = deepcopy(self.reg_vals[val])
+                    the_reg.name = reg2
                     done = True
+
             elif reg_match['hex_num']['m'].match(val):  # val is a hex number
                 # convert to int
                 val = reg_match['hex_num']['c'](val)
                 if inst == 'sub':
-                    self.reg_vals[reg]['val'] = self.reg_vals[reg]['val'] - val
+                    the_reg.set_val(val, is_e)
                     done = True
                 elif inst == 'mov':
-                    self.reg_vals[reg]['val'] = val
-                    self.reg_vals[reg]['typ'] = 'v'
+                    the_reg.set_val(val, is_e)
                     done = True
+
             elif reg_match['qword_address']['m'].match(val):  # value is qword memory
                 offset = reg_match['qword_address']['c'](val)
                 reg_new = reg_match['qword_address']['get_reg'](val)
@@ -115,38 +181,35 @@ class State:
                 if offset in self.stack.keys():
                     print('value found, add code here')
                 else:
-                    print('value not found')
-                    self.reg_vals[reg]['val'] = 'QWORD'
-                    self.reg_vals[reg]['typ'] = 'v'
-                    self.reg_vals[reg]['reg'] = val[10:]
-                done = True
-                pass
+                    print('value not found, add code here')
+
             elif reg_match['rbp_address']['m'].match(val):  # value is like [rbp-0x50]
                 val = reg_match['rbp_address']['c'](val)
-                #print(val)
                 if inst == 'mov':
-                    # put into reg the next 8 bytes at memory -val
-                    done = True
+                    # put into reg the next 64 bytes at memory -val
                     pass
+                    #done = True
                 elif inst == 'lea':
                     # put the address, that is the offset from rbp into the register
-                    self.reg_vals[reg]['val'] = -val
-                    self.reg_vals[reg]['typ'] = 'a'
-                    self.reg_vals[reg]['reg'] = 'rbp'
+                    the_reg.set_val(-val, is_e)
                     done = True
+
         elif reg_match['dword_address']['m'].match(reg):  # register is memory, dword long
             # offset from rbp
             reg_offset = reg_match['dword_address']['c'](reg)
             if self.stack[-reg_offset]:  # there is something at that memory address
-                if self.stack[-reg_offset]['name']:  # one of the local variables
+                if self.stack[-reg_offset].var:  # one of the local variables
                     if reg_match['hex_num']['m'].match(val):  # val is a hex number
                         # convert to int
                         val = reg_match['hex_num']['c'](val)
-                        if self.stack[-reg_offset]['bytes'] == 4:  # the value inserted is as long as the variable
-                            self.stack[-reg_offset]['val'] = val
+                        if self.stack[-reg_offset].bytes == 4:  # the value inserted is as long as the variable
+                            self.stack[-reg_offset].val = val
                             done = True
+
+
         if done:
-            #print("done")
+            # print("done")
+            self.reg_vals[reg2] = the_reg
             print(self.stack)
             print(self.reg_vals)
         else:
@@ -155,7 +218,7 @@ class State:
             print(bcolors.ENDC)
 
 
-def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> list:
+def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: list = []) -> list:
     """ Analyzes the instruction inst and creates a State object appended to append_to
 
     :param inst: An instruction as in the given JSON format
@@ -206,9 +269,9 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: dict = {}) -> 
                 # also pass it a copy of the current register values
                 # after each call it returns the register value after said call
                 # so we pass that on to the next call
-                use_reg_vals = analyze_inst(instr, called_fn_trimmed, s.children, use_reg_vals.copy())
+                use_reg_vals = analyze_inst(instr, called_fn_trimmed, s.children, deepcopy(use_reg_vals))
             # now use_reg_vals contains the register values after the function call, so we update our state
-            [s.reg_vals, s.stack] = use_reg_vals.copy()
+            [s.reg_vals, s.stack] = deepcopy(use_reg_vals)
         elif called_fn in dangerous_functions:
             # a call of one of the dangerous functions we consider
             # save that to the state so it doesn't need to be looked up in state.inst all the time
@@ -245,7 +308,7 @@ def add_variable_positions(var: dict, stack: dict) -> None:
                 var_rbp_distance = reg_match['relative_rbp_trimmed']['c'](var_address)
                 v['rbp_distance'] = var_rbp_distance
                 alloc.append([v['rbp_distance'] - v['bytes'], v['rbp_distance']])
-                stack[-var_rbp_distance] = v
+                stack[-var_rbp_distance] = Segment(v['bytes'], v)
             else:
                 print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
         sorted(alloc, key=lambda pair: pair[0])
@@ -277,7 +340,7 @@ def process_json(the_data):
     # Get function names
     func_names = data.keys()
 
-    stack = {'0': {'len': '-8', 'val': 'rbp_main'}}
+    stack = {'0': Segment('rbp')}
 
     # Parse vars and instrs for each function
     var = {}
@@ -286,9 +349,12 @@ def process_json(the_data):
     add_variable_positions(var, stack)
 
     # analyze all instructions of main
-    prev_reg = [{'rsp': {'val': 0, 'typ': 'a', 'reg': 'rbp'}, 'rbp': {'val': 0, 'typ': 'a', 'reg': 'main'}}, stack]
+    reg = {'rbp': Register('rbp'), 'rsp': Register('rsp', 0)}
+    prev_reg = [reg, stack]
 
+    print(prev_reg)
+    print(deepcopy(prev_reg))
     for inst in data['main']['instructions']:
-        prev_reg = analyze_inst(inst, 'main', p, prev_reg.copy())
+        prev_reg = analyze_inst(inst, 'main', p, deepcopy(prev_reg))
 
     return [p, var, dangerous_functions_occurring]
