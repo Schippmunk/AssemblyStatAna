@@ -75,8 +75,18 @@ def check_strncpy(state):
 
     source = find_reg_val(state, 'rsi', 'relative_rbp')
     print("source:", source)
-    limit = find_reg_val(state, 'rdx', 'relative_rbp')
-    print("limit:", limit)
+    
+    cpy_len = find_reg_val(state, 'esi', 'hex_num')
+    cpy_len = reg_matcher['hex_num']['converter'](cpy_len)
+    
+    print("cpy_len:", cpy_len)
+    
+    len_dest = get_var(state.f_n,destination)['bytes']
+
+    if cpy_len > len_dest:
+        check_overflow_consequences(state, abs(len_dest - cpy_len), destination, "strncpy")
+    else:
+        print("Strncpy: Destination buffer has a bigger size than the amount to be copied from source: No vulnerability :-)")
 
     # now see if the minimum of the limit and the length of the buf at buf_address exceed buf2
 
@@ -95,10 +105,12 @@ def check_strcpy(state):
     source = my_str_trim(source)
     destination = my_str_trim(destination)
 
-    len_source = get_var(state.f_n, source)
-    len_dest = get_var(state.f_n, destination)
+    len_source = get_var(state.f_n, source)['bytes_filled']
+    len_dest = get_var(state.f_n, destination)['bytes']
+    print("Source:",len_source)
+    print("Dest:",len_dest)
 
-    if len_source and len_dest and len_source > len_dest:
+    if len_source>=0 and len_dest>=0 and len_source > len_dest:
         check_overflow_consequences(state, abs(len_source - len_dest), destination, "strcpy")
     else:
         print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
