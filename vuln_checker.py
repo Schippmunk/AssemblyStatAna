@@ -58,34 +58,7 @@ def check_strncat(state):
     print("\nAnalyzing vulnerability due to strncat in", state)
 
 
-def check_gets(state: State):
-    print("\nAnalyzing vulnerability due to gets in", state)
 
-    buf_address = state.get_reg_val('rdi')
-    print("buf_address:", buf_address)
-
-    seg = state.get_seg(buf_address)
-    print('seg:', seg)
-
-    # no need to check, we know it's there
-    # check_rbp_overflow(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, 'gets', seg.var['name'],
-                                       state.inst['address'])
-    jsonio.add_vulnerability(vuln)
-
-    # no need to check, we know it's there
-    # check_ret_overflow(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, 'gets', seg.var['name'],
-                                       state.inst['address'])
-    jsonio.add_vulnerability(vuln)
-
-    # no need to check, we know it's there
-    # check_s_corruption(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, 'gets', seg.var['name'],
-                                       state.inst['address'], overflown_address='rbp+0x10')
-    jsonio.add_vulnerability(vuln)
-
-    check_var_overflow(state, sys.maxsize, seg.var, 'gets')
 
 
 def check_strncpy(state):
@@ -136,18 +109,45 @@ def check_strcpy(state):
     else:
         print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
 
+def check_gets(state: State):
+    print("\nAnalyzing vulnerability due to gets in", state)
+
+    buf_address = state.get_reg_val('rdi')
+    print("buf_address:", buf_address)
+
+    seg = state.get_seg(buf_address)
+    print('seg:', seg)
+
+    # no need to check, we know it's there
+    # check_rbp_overflow(state, input_length, buf, dng_func)
+    vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, 'gets', seg.var['name'],
+                                       state.inst['address'])
+    jsonio.add_vulnerability(vuln)
+
+    # no need to check, we know it's there
+    # check_ret_overflow(state, input_length, buf, dng_func)
+    vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, 'gets', seg.var['name'],
+                                       state.inst['address'])
+    jsonio.add_vulnerability(vuln)
+
+    # no need to check, we know it's there
+    # check_s_corruption(state, input_length, buf, dng_func)
+    vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, 'gets', seg.var['name'],
+                                       state.inst['address'], overflown_address='rbp+0x10')
+    jsonio.add_vulnerability(vuln)
+
+    check_var_overflow(state, sys.maxsize, seg.var, 'gets')
+
 
 def check_fgets(state: State) -> None:
     """Assumes the buffer gets loaded from rax and the input from esi"""
     print("\nAnalyzing vulnerability due to fgets in")
     print(state)
 
-    input_len = find_reg_val(state, 'rsi', 'hex_num')
-    #input_len = reg_matcher['hex_num']['converter'](input_len)
+    input_len = state.get_reg_val('esi')
     print("input_len:", input_len)
 
-    buf_address = find_reg_val(state, 'rdi', 'relative_rbp')
-    #buf_address = my_str_trim(buf_address)
+    buf_address = state.get_reg_val('rdi')
     print("buf_address:", buf_address)
 
     check_overflow_consequences(state, input_len, buf_address, "fgets")
@@ -264,7 +264,7 @@ def main(name: str):
 
 
     # print statements
-    #print_list()
+    print_list()
     # pprint(var)
     # pprint(dangerous_functions_occurring)
 

@@ -144,6 +144,8 @@ class State:
             return self.stack[address.get_val(at_e_val)]
 
     def get_reg_val(self, reg: str) -> Register:
+        if reg[0] == 'e':
+            reg = 'r' + reg[1:]
         return self.reg_vals[reg]
 
 
