@@ -1,12 +1,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 int main() {
   int control;
-  char buf[64];
+  char buf2[32];
+  char buf1[64];
 
   control = 5;
-  fgets(buf, 89, stdin);
+  fgets(buf1, 57, stdin);
+  strcpy(buf2, buf1);
 
+  return 0;
 }
