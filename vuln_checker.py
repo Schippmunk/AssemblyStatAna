@@ -14,7 +14,7 @@ from pprint import pprint
 # holds all information about the program
 data = {}
 p = {}
-var = {}
+#var = {}
 
 
 # checking functions
@@ -73,20 +73,19 @@ def check_gets(state: State):
                                        state.inst['address'])
     jsonio.add_vulnerability(vuln)
 
-    return
-    check_var_overflow(state, input_length, buf, dng_func)
-
     # no need to check, we know it's there
     # check_ret_overflow(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, dng_func, buf['name'],
+    vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, 'gets', seg.var['name'],
                                        state.inst['address'])
     jsonio.add_vulnerability(vuln)
 
     # no need to check, we know it's there
     # check_s_corruption(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf['name'],
+    vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, 'gets', seg.var['name'],
                                        state.inst['address'], overflown_address='rbp+0x10')
     jsonio.add_vulnerability(vuln)
+
+    check_var_overflow(state, sys.maxsize, seg.var, 'gets')
 
 
 def check_strncpy(state):
@@ -204,11 +203,15 @@ def check_ret_overflow(state: State, input_length: int, buf, instruction_name: s
         jsonio.add_vulnerability(vuln)
 
 
-def check_var_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
+def check_var_overflow(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
     """check for VARIABLEOVERFLOW"""
+    print(variables)
 
+    print(buf)
+    print(variables[state.f_n][-buf['rbp_distance']])
     # loop through all variables in the function
-    for v in var[state.f_n]:
+    for v_address in variables[state.f_n]:
+        v = variables[state.f_n][v_address]
         if (v['name'] != buf['name']) and (buf['rbp_distance'] > v['rbp_distance']):
 
             # check for each of these variables if they can be overflown
@@ -217,16 +220,16 @@ def check_var_overflow(state: State, input_length: int, buf, instruction_name: s
             # buffer_rbp_distance - variable_rbp_distance describes the distance between
             # buffer_address and input_address
             if buf['rbp_distance'] - v['rbp_distance'] < input_length:
-                if v['type'] == 'padding':
+                #if v['type'] == 'padding':
                     # a padding variable was overflown
-                    vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, instruction_name, buf['name'],
-                                                       state.inst['address'], overflown_address=v['address'])
-                    jsonio.add_vulnerability(vuln)
-                else:
-                    # an actual variable was overflown
-                    vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, instruction_name, buf['name'],
-                                                       state.inst['address'], v['name'])
-                    jsonio.add_vulnerability(vuln)
+                #    vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, instruction_name, buf['name'],
+                                            #            state.inst['address'], overflown_address=v['address'])
+                #    jsonio.add_vulnerability(vuln)
+
+                # an actual variable was overflown
+                vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, instruction_name, buf['name'],
+                                                   state.inst['address'], v['name'])
+                jsonio.add_vulnerability(vuln)
 
 
 def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str) -> None:
@@ -255,24 +258,21 @@ dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '
 
 
 def main(name: str):
-    global data, var, p, dangerous_functions
-
     json_data = jsonio.parser(name)
 
-    pr = process_json(json_data)
-    p = pr[0]
-    var = pr[1]
-    dan_fun_occ = pr[2]
+    process_json(json_data)
+
 
     # print statements
-    print_list()
+    #print_list()
     # pprint(var)
     # pprint(dangerous_functions_occurring)
 
     # analyze each dangerous function call
-    for state in dan_fun_occ:
+    for state in dangerous_functions_occurring:
         dangerous_functions[state.called_fn](state)
     return
+
     jsonio.write_json()
 
 

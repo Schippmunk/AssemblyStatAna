@@ -9,6 +9,8 @@ data = {}
 p = []
 # the states of p containing a call to a dangerous function
 dangerous_functions_occurring = []
+var = {}
+variables = {}
 
 reg_match = {
     'dword_address': {'m': re.compile('DWORD PTR \[(rbp|rip)[+-]0x[0-9a-f]+\]'),
@@ -302,7 +304,7 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: list = []) -> 
     return [s.reg_vals, s.stack]
 
 
-def add_variable_positions(var: dict, stack: dict) -> None:
+def add_variable_positions(stack: dict) -> None:
     """Goes through all variables of all functions.
 
     Adds attribute rbp_distance to it, that is the decimal integer distance of the address of the variable to rbp"
@@ -316,32 +318,19 @@ def add_variable_positions(var: dict, stack: dict) -> None:
            'type': 'buffer'}
     """
 
-    for f_n in var.keys():
-        alloc = []
-        for v in var[f_n]:
+    global variables
+    for f_n in data.keys():
+        variables[f_n] = {}
+        for v in data[f_n]['variables']:
             v['bytes_filled'] = 0
             var_address = v['address']
             if reg_match['relative_rbp_trimmed']['m'].match(var_address):
                 var_rbp_distance = reg_match['relative_rbp_trimmed']['c'](var_address)
                 v['rbp_distance'] = var_rbp_distance
-                alloc.append([v['rbp_distance'] - v['bytes'], v['rbp_distance']])
                 stack[-var_rbp_distance] = Segment(v['bytes'], v)
+                variables[f_n][-var_rbp_distance] = v
             else:
                 print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
-        sorted(alloc, key=lambda pair: pair[0])
-        for i in range(0, len(alloc) - 1):
-            end_this = alloc[i][1]
-            start_next = alloc[i + 1][0]
-            if end_this < start_next:
-                v = {
-                    'address': 'rbp-' + hex(start_next),
-                    'bytes': start_next - end_this,
-                    'name': 'my_padding_var_' + str(i),
-                    'rbp_distance': start_next,
-                    'type': 'padding'
-                }
-                var[f_n].append(v)
-
 
 
 
@@ -358,22 +347,19 @@ def process_json(the_data):
 
     # Get function names
     func_names = data.keys()
-
-    stack = {'0': Segment('rbp')}
-
     # Parse vars and instrs for each function
-    var = {}
     for f_n in func_names:
         var[f_n] = data[f_n]['variables']
-    add_variable_positions(var, stack)
 
-    # analyze all instructions of main
+    # initialize the stack
+    stack = {'0': Segment('rbp')}
+
+    add_variable_positions(stack)
+
+    # initialize the registers
     reg = {'rbp': Register('rbp'), 'rsp': Register('rsp', 0)}
     prev_reg = [reg, stack]
 
-    #print(prev_reg)
-    #print(deepcopy(prev_reg))
+    # analyze the program
     for inst in data['main']['instructions']:
         prev_reg = analyze_inst(inst, 'main', p, deepcopy(prev_reg))
-
-    return [p, var, dangerous_functions_occurring]
