@@ -98,6 +98,31 @@ class Segment:
         return "Segment of " + str(self.bytes) + " bytes" + appendix
 
 
+class Variable:
+    address = ''
+    bytes = 0
+    bytes_filled = 0
+    name = ''
+    rbp_distance = 0
+    type = ''
+
+    def fill(self, bytes: int) -> None:
+        self.bytes_filled = self.bytes_filled + bytes
+
+    def __repr__(self):
+        return "Variable: " + self.name + str(self.bytes) + str(self.rbp_distance) + self.type
+
+    def __init__(self, json_data: dict):
+        self.address = json_data['address']
+        self.bytes = json_data['bytes']
+        self.name = json_data['name']
+        self.type = json_data['type']
+
+        rbp_distance = reg_match['relative_rbp_trimmed']['c'](json_data['address'])
+        self.rbp_distance = - rbp_distance
+        self.bytes_filled = 0
+
+
 class State:
     """Describes the state of the program after execution of the instruction inst"""
 
@@ -252,12 +277,6 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: list = []) -> 
     When called initially, append_to should be a global list like p
     """
     global dangerous_functions_occurring
-    # pprint("analyzing")
-    # pprint(inst)
-    # print("in function", f_n)
-    # pprint("parameter prev_reg:")
-    # pprint(prev_reg)
-
     # Create the new state of this program
     s = State()
     s.f_n = f_n
@@ -301,39 +320,18 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: list = []) -> 
             dangerous_functions_occurring.append(s)
     # after the state is completely analyzed (with all its children) we add it to append_to
     append_to.append(s)
-    # pprint("returning reg_vals")
-    # pprint(s.reg_vals)
     return [s.reg_vals, s.stack]
 
 
 def add_variable_positions(stack: dict) -> None:
-    """Goes through all variables of all functions.
-
-    Adds attribute rbp_distance to it, that is the decimal integer distance of the address of the variable to rbp"
-    Adds/inititializes bytes_filled, which is updated, everytime some user function fills it
-
-    {'address': 'rbp-0x50',
-           'bytes': 64,
-           'bytes_filled': 0,
-           'name': 'buf',
-           'rbp_distance': 80,
-           'type': 'buffer'}
-    """
-
     global variables
     for f_n in data.keys():
         variables[f_n] = {}
         for v in data[f_n]['variables']:
-            v['bytes_filled'] = 0
-            var_address = v['address']
-            if reg_match['relative_rbp_trimmed']['m'].match(var_address):
-                var_rbp_distance = reg_match['relative_rbp_trimmed']['c'](var_address)
-                v['rbp_distance'] = var_rbp_distance
-                stack[-var_rbp_distance] = Segment(v['bytes'], v)
-                variables[f_n][-var_rbp_distance] = v
-            else:
-                print('ERROR in add_variable_positions: value of variable_address does not match re, is', var_address)
-
+            v = Variable(v)
+            stack[v.rbp_distance] = Segment(v.bytes, v)
+            variables[f_n][v.rbp_distance] = v
+    sorted(variables)
 
 
 def print_list():

@@ -19,11 +19,9 @@ p = {}
 
 # checking functions
 
-def change_var_written(v, new_bytes):
-    v['bytes_filled'] = v['bytes_filled'] + new_bytes
-
 
 def check_strcat(state):
+    return
     print("\nAnalyzing vulnerability due to strcat in", state)
 
     # source
@@ -55,6 +53,7 @@ def check_strcat(state):
 
 
 def check_strncat(state):
+    return
     print("\nAnalyzing vulnerability due to strncat in", state)
 
 
@@ -62,6 +61,7 @@ def check_strncat(state):
 
 
 def check_strncpy(state):
+    return
     print("\nAnalyzing vulnerability due to strncpy in", state)
 
     destination = find_reg_val(state, 'rdi', 'relative_rbp')
@@ -86,6 +86,7 @@ def check_strncpy(state):
 
 
 def check_strcpy(state):
+    return
     print("\nAnalyzing vulnerability due to strcpy in", state)
 
     destination = find_reg_val(state, 'rdi', 'relative_rbp')
@@ -120,19 +121,19 @@ def check_gets(state: State):
 
     # no need to check, we know it's there
     # check_rbp_overflow(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, 'gets', seg.var['name'],
+    vuln = jsonio.create_vulnerability("RBPOVERFLOW", state.f_n, 'gets', seg.var.name,
                                        state.inst['address'])
     jsonio.add_vulnerability(vuln)
 
     # no need to check, we know it's there
     # check_ret_overflow(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, 'gets', seg.var['name'],
+    vuln = jsonio.create_vulnerability("RETOVERFLOW", state.f_n, 'gets', seg.var.name,
                                        state.inst['address'])
     jsonio.add_vulnerability(vuln)
 
     # no need to check, we know it's there
     # check_s_corruption(state, input_length, buf, dng_func)
-    vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, 'gets', seg.var['name'],
+    vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, 'gets', seg.var.name,
                                        state.inst['address'], overflown_address='rbp+0x10')
     jsonio.add_vulnerability(vuln)
 
@@ -145,9 +146,11 @@ def check_fgets(state: State) -> None:
     print(state)
 
     input_len = state.get_reg_val('esi')
+    input_len = input_len.get_val(True)
     print("input_len:", input_len)
 
     buf_address = state.get_reg_val('rdi')
+    buf_address = buf_address.get_val()
     print("buf_address:", buf_address)
 
     check_overflow_consequences(state, input_len, buf_address, "fgets")
@@ -155,20 +158,19 @@ def check_fgets(state: State) -> None:
 
 # helper functions for the check_* functions
 
-def check_overflow_consequences(state: State, input_length: int, buf_address: str, dng_func: str) -> None:
+def check_overflow_consequences(state: State, input_length: int, buf_address: int, dng_func: str) -> None:
     """ Knowing the length of the input, and the address of the buf, what can happen?"""
 
     # find the buf variable among the local vars of f_n
-    buf = get_var(state.f_n, buf_address)
+    buf = variables[state.f_n][buf_address]
 
     if dng_func == "gets":
         pass
     elif buf:
-        change_var_written(buf, input_length)
-
-        print("Buffer is of size", buf['bytes'])
+        print(buf)
+        buf.fill(input_length)
         # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
-        if input_length > buf['bytes']:
+        if input_length > buf.bytes:
             # now check what can be overflown
             print("VULNERABILITY: Buffer can be overflown by", input_length - buf['bytes'])
 
@@ -205,21 +207,18 @@ def check_ret_overflow(state: State, input_length: int, buf, instruction_name: s
 
 def check_var_overflow(state: State, input_length: int, buf: dict, instruction_name: str) -> None:
     """check for VARIABLEOVERFLOW"""
-    print(variables)
 
-    print(buf)
-    print(variables[state.f_n][-buf['rbp_distance']])
     # loop through all variables in the function
     for v_address in variables[state.f_n]:
         v = variables[state.f_n][v_address]
-        if (v['name'] != buf['name']) and (buf['rbp_distance'] > v['rbp_distance']):
+        if (v.name != buf.name) and (buf.rbp_distance > v.rbp_distance):
 
             # check for each of these variables if they can be overflown
-            print('Checking variable for overflow:', v['name'])
+            print('Checking variable for overflow:', v.name)
 
             # buffer_rbp_distance - variable_rbp_distance describes the distance between
             # buffer_address and input_address
-            if buf['rbp_distance'] - v['rbp_distance'] < input_length:
+            if buf.rbp_distance- v.rbp_distance < input_length:
                 #if v['type'] == 'padding':
                     # a padding variable was overflown
                 #    vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, instruction_name, buf['name'],
@@ -227,8 +226,8 @@ def check_var_overflow(state: State, input_length: int, buf: dict, instruction_n
                 #    jsonio.add_vulnerability(vuln)
 
                 # an actual variable was overflown
-                vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, instruction_name, buf['name'],
-                                                   state.inst['address'], v['name'])
+                vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, instruction_name, buf.name,
+                                                   state.inst['address'], v.name)
                 jsonio.add_vulnerability(vuln)
 
 
@@ -245,13 +244,6 @@ def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str
 
 # utility functions
 
-def get_var(f_n: str, address: str) -> dict:
-    """Returns the whole variable dictionary of function f_n, if address matches the variable's address"""
-    for v in var[f_n]:
-        if v['address'] == address:
-            return v
-    print("get_var ERROR: No such address {} in function {}".format(address, f_n))
-
 
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
                        '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
@@ -264,8 +256,8 @@ def main(name: str):
 
 
     # print statements
-    print_list()
-    # pprint(var)
+    #print_list()
+    #pprint(variables)
     # pprint(dangerous_functions_occurring)
 
     # analyze each dangerous function call
