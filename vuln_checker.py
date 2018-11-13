@@ -84,7 +84,7 @@ def check_strncpy(state):
     len_dest = get_var(state.f_n,destination)['bytes']
 
     if cpy_len > len_dest:
-        check_overflow_consequences(state, abs(len_dest - cpy_len), destination, "strncpy")
+        check_overflow_consequences(state, cpy_len, destination, "strncpy")
     else:
         print("Strncpy: Destination buffer has a bigger size than the amount to be copied from source: No vulnerability :-)")
 
@@ -111,7 +111,7 @@ def check_strcpy(state):
     print("Dest:",len_dest)
 
     if len_source>=0 and len_dest>=0 and len_source > len_dest:
-        check_overflow_consequences(state, abs(len_source - len_dest), destination, "strcpy")
+        check_overflow_consequences(state, len_source, destination, "strcpy")
     else:
         print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
 
@@ -234,7 +234,7 @@ def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str
             jsonio.add_vulnerability(vuln)
     # checking this if state.f_n is not main requires a lot more work, because we don't know how far the rbp of
     # state.f_n is a way from the rbp of main
-
+    
 
 # utility functions
 
