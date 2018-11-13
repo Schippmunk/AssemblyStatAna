@@ -270,12 +270,12 @@ def main(name: str):
     p = pr[0]
     var = pr[1]
     dan_fun_occ = pr[2]
-    return
+
     # print statements
     # print_list()
     # pprint(var)
     # pprint(dangerous_functions_occurring)
-
+    return
     # analyze each dangerous function call
     for state in dan_fun_occ:
         dangerous_functions[state.called_fn](state)

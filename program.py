@@ -19,7 +19,7 @@ reg_match = {
                       'get_sign': lambda x: x[14]},
     'rbp_address': {'m': re.compile('\[rbp-0x[0-9a-f]+\]'), 'c': lambda x: int(x[5:len(x) - 1], 16)},
     'rbp_address_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
-    'relative_rbp_trimmed': {'m': re.compile('rbp-0x\d+'), 'c': lambda x: int(x[4:], 16)},
+    'relative_rbp_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
     'hex_num': {'m': re.compile('0x[0-9a-f]+'), 'c': lambda x: int(x, 16)}
 }
 
@@ -133,9 +133,6 @@ class State:
         depends on the instruction inst, which is sub, mov or lea.
         """
 
-        print('\n-----------------------', self.f_n)
-        print(inst + " " + reg + " " + val)
-
         done = False
         the_reg = None
 
@@ -152,7 +149,6 @@ class State:
                 the_reg = self.reg_vals[reg2]
             else:
                 the_reg = Register(reg)
-
 
             if val in reg_names:  # val is a register
                 if inst == 'mov':
@@ -172,16 +168,19 @@ class State:
                     done = True
 
             elif reg_match['qword_address']['m'].match(val):  # value is qword memory
-                offset = reg_match['qword_address']['c'](val)
-                reg_new = reg_match['qword_address']['get_reg'](val)
-                sign = reg_match['qword_address']['get_sign'](val)
-                if sign == '-':
-                    offset = -offset
-                # load qword bytes from stack and put them in reg
-                if offset in self.stack.keys():
-                    print('value found, add code here')
+                if not val[:17] == 'QWORD PTR [rip+0x': # exclude those strange QWORD things, I think they're user input
+                    offset = reg_match['qword_address']['c'](val)
+                    reg_new = reg_match['qword_address']['get_reg'](val)
+                    sign = reg_match['qword_address']['get_sign'](val)
+                    if sign == '-':
+                        offset = -offset
+                    # load qword bytes from stack and put them in reg
+                    if offset in self.stack.keys():
+                        print('value found, add code here')
+                    else:
+                        print('value not found, add code here')
                 else:
-                    print('value not found, add code here')
+                    done = True
 
             elif reg_match['rbp_address']['m'].match(val):  # value is like [rbp-0x50]
                 val = reg_match['rbp_address']['c'](val)
@@ -208,11 +207,12 @@ class State:
 
 
         if done:
-            # print("done")
             self.reg_vals[reg2] = the_reg
-            print(self.stack)
-            print(self.reg_vals)
+            #print(self.stack)
+            #print(self.reg_vals)
         else:
+            print('\n-----------------------', self.f_n)
+            print(inst + " " + reg + " " + val)
             print(bcolors.FAIL)
             print("INSTRUCTION NOT ANALYZED")
             print(bcolors.ENDC)
@@ -352,8 +352,8 @@ def process_json(the_data):
     reg = {'rbp': Register('rbp'), 'rsp': Register('rsp', 0)}
     prev_reg = [reg, stack]
 
-    print(prev_reg)
-    print(deepcopy(prev_reg))
+    #print(prev_reg)
+    #print(deepcopy(prev_reg))
     for inst in data['main']['instructions']:
         prev_reg = analyze_inst(inst, 'main', p, deepcopy(prev_reg))
 
