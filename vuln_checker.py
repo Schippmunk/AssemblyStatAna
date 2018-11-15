@@ -72,16 +72,17 @@ def check_strncpy(state):
 
     destination = find_reg_val(state, 'rdi', 'relative_rbp')
     print("destination:", destination)
-
-    source = find_reg_val(state, 'rsi', 'relative_rbp')
-    print("source:", source)
     
-    cpy_len = find_reg_val(state, 'esi', 'hex_num')
+    cpy_len = find_reg_val(state, 'edx', 'hex_num')
     cpy_len = reg_matcher['hex_num']['converter'](cpy_len)
-    
     print("cpy_len:", cpy_len)
     
-    len_dest = get_var(state.f_n,destination)['bytes']
+    #fix format inconsistencie
+    if(destination[0]=="["):
+        destination = my_str_trim(destination)
+        len_dest = get_var(state.f_n,destination)['bytes']
+    else:
+        len_dest = get_var(state.f_n,destination)['bytes']
 
     if cpy_len > len_dest:
         check_overflow_consequences(state, cpy_len, destination, "strncpy")

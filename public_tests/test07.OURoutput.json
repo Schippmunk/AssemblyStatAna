@@ -1,0 +1,10 @@
+[
+    {
+        "vulnerability": "VAROVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strncpy",
+        "overflow_var": "buf2",
+        "address": "4005a1",
+        "overflown_var": "control"
+    }
+]
