@@ -1,7 +1,6 @@
 # allows annotating states from program.py even though State is declared afterwards
 from __future__ import annotations
-import fnmatch
-import os
+
 # regular expressions used to match addresses
 import re
 
@@ -295,15 +294,7 @@ dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '
 
 def main(name: str):
 
-    name = name + "*.json"
-
-
-    for file in os.listdir('.'):
-        if fnmatch.fnmatch(file,name):
-            name = file
-
-    print(name)
-
+    
 
     json_data = jsonio.parser(name)
 

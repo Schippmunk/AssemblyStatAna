@@ -1,6 +1,8 @@
 import json
 import util
 from pprint import pprint
+import os
+import fnmatch
 
 inputfilename = ''
 outputfilename = ''
@@ -10,7 +12,15 @@ def parser(name):
     """Opens JSON file and calls parse_json with it"""
 
     global inputfilename
-    inputfilename = "public_tests/test" + name + ".json";
+
+    pattern = "*" + name + "*.json"
+
+    for file in os.listdir('./public_tests'):
+        #match test number + .json, and not output.json
+        if fnmatch.fnmatch(file,pattern) and (not fnmatch.fnmatch(file,"*output.json")):
+            inputfilename = "public_tests/" + file
+            break
+
     global outputfilename
     outputfilename = "public_tests/test" + name + ".OURoutput.json"
 
