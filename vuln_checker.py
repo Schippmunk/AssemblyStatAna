@@ -77,7 +77,7 @@ def check_strncat(state):
     print(src_len)
     print(dest_len)
     print(dest_len_f)
-    if src_len > (dest_len - dest_len_f):
+    if input_len > (dest_len - dest_len_f):
 
         if src_len > (dest_len - dest_len_f):
             # now check what can be overflown
