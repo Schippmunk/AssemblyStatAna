@@ -29,19 +29,13 @@ def check_strcat(state):
     src_len = variables[state.f_n][source].bytes_filled
     print("Src_len",src_len)
 
+    #destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
     dest_len_f = variables[state.f_n][destination].bytes_filled
     print("Dest_len: ",dest_len)
 
-    #src = get_var(state.f_n, src_address)
-    #dest = get_var(state.f_n, dest_address)
-
-    #print("Source has {} bytes filled".format(src['bytes_filled']))
-    #print("Destination has {} out of {} bytes filled".format(dest['bytes_filled'], dest['bytes']))
-
-    # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
     print(src_len)
     print(dest_len)
     print(dest_len_f)
@@ -60,9 +54,47 @@ def check_strcat(state):
 
 
 def check_strncat(state):
-    return
+
     print("\nAnalyzing vulnerability due to strncat in", state)
 
+    # source
+    source_buf = state.get_reg_val('rsi')
+    source = source_buf.get_val()
+    src_len = variables[state.f_n][source].bytes_filled
+    print("Src_len",src_len)
+
+
+    input_len = state.get_reg_val('edx')
+    input_len = input_len.get_val(True)
+    #destination
+    destination_buf = state.get_reg_val('rdi')
+    destination = destination_buf.get_val()
+    dest_len = variables[state.f_n][destination].bytes
+    dest_len_f = variables[state.f_n][destination].bytes_filled
+    print("Dest_len: ",dest_len)
+
+    print(src_len)
+    print(dest_len)
+    print(dest_len_f)
+    if src_len > (dest_len - dest_len_f):
+
+        if src_len > (dest_len - dest_len_f):
+            # now check what can be overflown
+            print("STRNCAT VULNERABILITY: Buffer {} can be overflown by buffer {}".format(variables[state.f_n][destination].name, variables[state.f_n][source].name))
+
+            total_length = dest_len_f + src_len
+            check_rbp_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
+            check_var_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
+            check_ret_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
+            check_s_corruption(state, total_length, variables[state.f_n][destination], 'strncat')
+            check_canarie_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
+        else:
+            print("There is no STRNCAT overflow possible here.")
+
+    else:
+        print("There is no STRNCAT overflow possible here.")
+
+    return
 
 def check_strncpy(state):
     destination_buf = state.get_reg_val('rdi')
