@@ -28,21 +28,16 @@ def check_strcat(state):
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
-    print("Src_len",src_len)
 
     #destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
     dest_len_f = variables[state.f_n][destination].bytes_filled
-    print("Dest_len: ",dest_len)
 
-    print(src_len)
-    print(dest_len)
-    print(dest_len_f)
     if src_len > (dest_len - dest_len_f):
         # now check what can be overflown
-        print("STRCAT VULNERABILITY: Buffer {} can be overflown by buffer {}".format(variables[state.f_n][destination].name, variables[state.f_n][source].name))
+        print("Possible overflow by strcat: Buffer {} can be overflown by buffer {}".format(variables[state.f_n][destination].name, variables[state.f_n][source].name))
 
         total_length = dest_len_f + src_len
         check_rbp_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
@@ -51,8 +46,8 @@ def check_strcat(state):
         check_s_corruption(state, total_length, variables[state.f_n][destination], 'strcat')
         check_canarie_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
     else:
-        print("There is no STRCAT overflow possible here.")
-
+        print("There is no strcat overflow possible here.")
+        return
 
 def check_strncat(state):
 
@@ -62,8 +57,6 @@ def check_strncat(state):
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
-    print("Src_len",src_len)
-
 
     input_len = state.get_reg_val('edx')
     input_len = input_len.get_val(True)
@@ -72,16 +65,12 @@ def check_strncat(state):
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
     dest_len_f = variables[state.f_n][destination].bytes_filled
-    print("Dest_len: ",dest_len)
 
-    print(src_len)
-    print(dest_len)
-    print(dest_len_f)
     if input_len > (dest_len - dest_len_f):
 
         if src_len > (dest_len - dest_len_f):
             # now check what can be overflown
-            print("STRNCAT VULNERABILITY: Buffer {} can be overflown by buffer {}".format(variables[state.f_n][destination].name, variables[state.f_n][source].name))
+            print("Possible overflow by strncat: Buffer {} can be overflown by buffer {}".format(variables[state.f_n][destination].name, variables[state.f_n][source].name))
 
             total_length = dest_len_f + src_len
             check_rbp_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
@@ -90,10 +79,12 @@ def check_strncat(state):
             check_s_corruption(state, total_length, variables[state.f_n][destination], 'strncat')
             check_canarie_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
         else:
-            print("There is no STRNCAT overflow possible here.")
+            print("There is no strncat overflow possible here.")
+            return
 
     else:
-        print("There is no STRNCAT overflow possible here.")
+        print("There is no strncat overflow possible here.")
+        return
 
     return
 
