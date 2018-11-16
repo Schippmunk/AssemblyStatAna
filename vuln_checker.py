@@ -16,7 +16,7 @@ from pprint import pprint
 data = {}
 p = {}
 #var = {}
-
+dng_strcpy = []
 
 # checking functions
 
@@ -89,14 +89,26 @@ def check_strncat(state):
     return
 
 def check_strncpy(state):
+    print("\nAnalyzing vulnerability due to strncpy in", state)
+    
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
     print("Dest_len: ",dest_len)
     
+    source_buf = state.get_reg_val('rsi')
+    source = source_buf.get_val()
+    src_len = variables[state.f_n][source].bytes_filled
+    print("Src_len",src_len)
+    
     input_len = state.get_reg_val('edx')
     input_len = input_len.get_val(True)
     print("input_len:", input_len)
+
+    if src_len >input_len and input_len == dest_len:
+        global dng_strcpy
+        dng_strcpy.append(variables[state.f_n][destination].name)
+        print(variables[state.f_n][destination].name)
 
     if input_len > dest_len:
         check_overflow_consequences(state, input_len, destination, "strcpy")
@@ -119,6 +131,8 @@ def check_strcpy(state):
     
     if src_len > dest_len:
         check_overflow_consequences(state, src_len, destination, "strcpy")
+    elif variables[state.f_n][source].name in dng_strcpy:
+        check_overflow_consequences(state, 9999, destination, "strcpy")
     else:
         print("Strcpy: Source buffer has a smaller size than destination buffer: No vulnerability :-)")
     
