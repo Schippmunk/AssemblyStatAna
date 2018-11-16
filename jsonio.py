@@ -13,17 +13,10 @@ def parser(name):
     """Opens JSON file and calls parse_json with it"""
 
     global inputfilename
-
-    pattern = "*" + name + "*.json"
-
-    for file in os.listdir('./public_tests'):
-        # match test number + .json, and not output.json
-        if fnmatch.fnmatch(file, pattern) and (not fnmatch.fnmatch(file, "*output.json")):
-            inputfilename = "public_tests/" + file
-            break
+    inputfilename = name
 
     global outputfilename
-    outputfilename = "public_tests/test" + name + ".OURoutput.json"
+    outputfilename = name[:len(name) - 4] + "output.json"
 
     try:
         with open(inputfilename) as f:
@@ -42,7 +35,7 @@ def parser_path(path: str) -> dict:
     global inputfilename
     inputfilename = path
     global outputfilename
-    outputfilename = path[:len(path) - 4] + "OURoutput.json"
+    outputfilename = path[:len(path) - 4] + ".output.json"
 
     try:
         with open(inputfilename) as f:
