@@ -1,0 +1,32 @@
+[
+    {
+        "vulnerability": "RBPOVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "address": "40059c"
+    },
+    {
+        "vulnerability": "VAROVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "address": "40059c",
+        "overflown_var": "control"
+    },
+    {
+        "vulnerability": "RETOVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "address": "40059c"
+    },
+    {
+        "vulnerability": "INVALIDACCS",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "address": "40059c",
+        "overflown_address": "rbp-0x10"
+    }
+]

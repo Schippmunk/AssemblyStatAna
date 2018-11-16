@@ -111,6 +111,7 @@ def check_strncpy(state):
         check_overflow_consequences(state, input_len, destination, "strcpy")
     else:
         return
+
 def check_strcpy(state):
 
     print("\nAnalyzing vulnerability due to strcpy in", state)
@@ -129,6 +130,7 @@ def check_strcpy(state):
         check_overflow_consequences(state, 9999, destination, "strcpy")
     else:
         return
+    
 
 def check_gets(state: State):
     print("\nAnalyzing vulnerability due to gets in", state)
@@ -162,7 +164,7 @@ def check_gets(state: State):
     #jsonio.add_vulnerability(vuln)
     
     vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, 'gets', seg.var.name,
-                                                        state.inst['address'], overflown_address='rbp-0x10')
+                                                        state.inst['address'], overflown_address="rbp-0x10")
     jsonio.add_vulnerability(vuln)
 
     check_var_overflow(state, sys.maxsize, seg.var, 'gets')
@@ -175,13 +177,14 @@ def check_fgets(state: State) -> None:
 
     input_len = state.get_reg_val('esi')
     input_len = input_len.get_val(True)
-    print("input_len:", input_len)
 
     buf_address = state.get_reg_val('rdi')
     buf_address = buf_address.get_val()
-    print("buf_address:", buf_address)
 
     check_overflow_consequences(state, input_len, buf_address, "fgets")
+
+
+# helper functions for the check_* functions
 
 def check_overflow_consequences(state: State, input_length: int, buf_address: int, dng_func: str) -> None:
     """ Knowing the length of the input, and the address of the buf, what can happen?"""
@@ -282,11 +285,6 @@ def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str
             vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf.name,
                                                state.inst['address'], overflown_address='rbp+0x10')
             jsonio.add_vulnerability(vuln)
-    # checking this if state.f_n is not main requires a lot more work, because we don't know how far the rbp of
-    # state.f_n is a way from the rbp of main
-    
-
-# utility functions
 
 
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
@@ -301,18 +299,12 @@ def main(name: str):
 
     process_json(json_data)
 
-
-    # print statements
-    #print_list()
-    pprint(variables)
-    # pprint(dangerous_functions_occurring)
-
-    # analyze each dangerous function call
     for state in dangerous_functions_occurring:
         dangerous_functions[state.called_fn](state)
 
     jsonio.write_json()
-
+    
+    return
 
 if __name__ == "__main__":
     import sys

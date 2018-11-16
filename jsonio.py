@@ -105,5 +105,4 @@ def write_json():
     f = open(outputfilename, "a")
     # f.write(str(vulnerability))
     json.dump(vulnerabilities, f, indent=4)
-    f.write("\n")
     f.close()

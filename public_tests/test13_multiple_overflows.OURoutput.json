@@ -1,0 +1,56 @@
+[
+    {
+        "vulnerability": "VAROVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "address": "40059c",
+        "overflown_var": "buf3"
+    },
+    {
+        "vulnerability": "VAROVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "address": "40059c",
+        "overflown_var": "control"
+    },
+    {
+        "vulnerability": "INVALIDACCS",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "address": "40059c",
+        "overflown_address": "rbp-0x10"
+    },
+    {
+        "vulnerability": "RBPOVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf3",
+        "address": "4005af"
+    },
+    {
+        "vulnerability": "VAROVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf3",
+        "address": "4005af",
+        "overflown_var": "control"
+    },
+    {
+        "vulnerability": "RETOVERFLOW",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf3",
+        "address": "4005af"
+    },
+    {
+        "vulnerability": "INVALIDACCS",
+        "vuln_function": "main",
+        "fnname": "strcpy",
+        "overflow_var": "buf3",
+        "address": "4005af",
+        "overflown_address": "rbp-0x10"
+    }
+]
