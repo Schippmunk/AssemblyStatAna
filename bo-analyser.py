@@ -15,8 +15,8 @@ from pprint import pprint
 # holds all information about the program
 data = {}
 p = {}
-#var = {}
 dng_strcpy = []
+
 
 # checking functions
 
@@ -27,7 +27,7 @@ def check_strcat(state):
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
 
-    #destination
+    # destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
@@ -35,7 +35,7 @@ def check_strcat(state):
 
     if src_len > (dest_len - dest_len_f):
         # now check what can be overflown
-        
+
         total_length = dest_len_f + src_len
         check_rbp_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
         check_var_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
@@ -45,9 +45,8 @@ def check_strcat(state):
     else:
         return
 
+
 def check_strncat(state):
-
-
     # source
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
@@ -55,7 +54,7 @@ def check_strncat(state):
 
     input_len = state.get_reg_val('edx')
     input_len = input_len.get_val(True)
-    #destination
+    # destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
@@ -79,20 +78,20 @@ def check_strncat(state):
 
     return
 
+
 def check_strncpy(state):
-    
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
-    
+
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
-    
+
     input_len = state.get_reg_val('edx')
     input_len = input_len.get_val(True)
 
-    if src_len >input_len and input_len == dest_len:
+    if src_len > input_len and input_len == dest_len:
         global dng_strcpy
         dng_strcpy.append(variables[state.f_n][destination].name)
 
@@ -100,16 +99,17 @@ def check_strncpy(state):
         check_overflow_consequences(state, input_len, destination, "strcpy")
     else:
         return
+
+
 def check_strcpy(state):
-    
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
-    
+
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
-    
+
     if src_len > dest_len:
         check_overflow_consequences(state, src_len, destination, "strcpy")
     elif variables[state.f_n][source].name in dng_strcpy:
@@ -117,8 +117,8 @@ def check_strcpy(state):
     else:
         return
 
+
 def check_gets(state: State):
-    
     buf_address = state.get_reg_val('rdi')
     seg = state.get_seg(buf_address)
 
@@ -139,13 +139,13 @@ def check_gets(state: State):
     vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, 'gets', seg.var.name,
                                        state.inst['address'], overflown_address='rbp+0x10')
     jsonio.add_vulnerability(vuln)
-    
-    #vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, 'gets', seg.var.name,
+
+    # vuln = jsonio.create_vulnerability("VAROVERFLOW", state.f_n, 'gets', seg.var.name,
     #                                               state.inst['address'], state.inst['address'])
-    #jsonio.add_vulnerability(vuln)
-    
+    # jsonio.add_vulnerability(vuln)
+
     vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, 'gets', seg.var.name,
-                                                        state.inst['address'], overflown_address='rbp-0x10')
+                                       state.inst['address'], overflown_address='rbp-0x10')
     jsonio.add_vulnerability(vuln)
 
     check_var_overflow(state, sys.maxsize, seg.var, 'gets')
@@ -161,6 +161,7 @@ def check_fgets(state: State) -> None:
     buf_address = buf_address.get_val()
 
     check_overflow_consequences(state, input_len, buf_address, "fgets")
+
 
 def check_overflow_consequences(state: State, input_length: int, buf_address: int, dng_func: str) -> None:
     """ Knowing the length of the input, and the address of the buf, what can happen?"""
@@ -204,30 +205,31 @@ def check_ret_overflow(state: State, input_length: int, buf, instruction_name: s
                                            state.inst['address'])
         jsonio.add_vulnerability(vuln)
 
+
 def check_inavlidAcc_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
     """check for inavlidAcc"""
-    
-    #sort keys of vars in function f_n    
+
+    # sort keys of vars in function f_n
     keys = list(variables[state.f_n].keys())
     keys.sort(reverse=True)
 
     sum = 0
     for i in keys:
         sum -= variables[state.f_n][i].bytes
-        if sum!= variables[state.f_n][i].rbp_distance:
-            #Padding found
-            #Base adress of the padding
+        if sum != variables[state.f_n][i].rbp_distance:
+            # Padding found
+            # Base adress of the padding
             address = abs(variables[state.f_n][i].rbp_distance) - variables[state.f_n][i].bytes
 
-            #convert to hexa and proper format
-            address = "rbp-"+hex(address)
+            # convert to hexa and proper format
+            address = "rbp-" + hex(address)
 
-            #add vuln            
+            # add vuln
             vuln = jsonio.create_vulnerability("INVALIDACCS", state.f_n, instruction_name, buf.name,
-                                                        state.inst['address'], overflown_address=address)
+                                               state.inst['address'], overflown_address=address)
             jsonio.add_vulnerability(vuln)
-            
-            #update sum value, to check if there is more padding
+
+            # update sum value, to check if there is more padding
             sum = variables[state.f_n][i].rbp_distance
 
 
@@ -249,6 +251,7 @@ def check_var_overflow(state: State, input_length: int, buf: dict, instruction_n
 
 def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str) -> None:
     """Check for SCORRUPTION in main"""
+
     if state.f_n == 'main':
         if input_length > abs(buf.rbp_distance) + 16:
             vuln = jsonio.create_vulnerability("SCORRUPTION", state.f_n, dng_func, buf.name,
@@ -256,9 +259,6 @@ def check_s_corruption(state: State, input_length: int, buf: dict, dng_func: str
             jsonio.add_vulnerability(vuln)
     # checking this if state.f_n is not main requires a lot more work, because we don't know how far the rbp of
     # state.f_n is a way from the rbp of main
-    
-
-# utility functions
 
 
 dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '<strcat@plt>': check_strcat,
@@ -266,8 +266,7 @@ dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '
 
 
 def main(name: str):
-
-    
+    """Delegates steps of the static analysis: reads file, processes it, saves output"""
 
     json_data = jsonio.parser(name)
 
@@ -281,6 +280,7 @@ def main(name: str):
 
 
 if __name__ == "__main__":
+    """Entry point of the program"""
     import sys
 
     main(sys.argv[1])
