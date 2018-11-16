@@ -1,0 +1,10 @@
+[
+    {
+        "vulnerability": "VAROVERFLOW",
+        "vuln_function": "main",
+        "fnname": "fgets",
+        "overflow_var": "buf1",
+        "address": "400589",
+        "overflown_var": "buf2"
+    }
+]
