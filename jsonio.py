@@ -8,6 +8,7 @@ inputfilename = ''
 outputfilename = ''
 vulnerabilities = []
 
+
 def parser(name):
     """Opens JSON file and calls parse_json with it"""
 
@@ -16,8 +17,8 @@ def parser(name):
     pattern = "*" + name + "*.json"
 
     for file in os.listdir('./public_tests'):
-        #match test number + .json, and not output.json
-        if fnmatch.fnmatch(file,pattern) and (not fnmatch.fnmatch(file,"*output.json")):
+        # match test number + .json, and not output.json
+        if fnmatch.fnmatch(file, pattern) and (not fnmatch.fnmatch(file, "*output.json")):
             inputfilename = "public_tests/" + file
             break
 
@@ -68,29 +69,18 @@ def parse_json(data):
 
 def create_output_file():
     """Creates the output file with filename outputfilename"""
-    # TODO: actually create the file
-    f = open(outputfilename,"w+")
-    pass
+
+    f = open(outputfilename, "w+")
 
 
 def add_vulnerability(vulnerability):
-    """Appends the vulnerability to filename name
+    """Appends the vulnerability to filename name"""
 
-    vulnerability is a dictionary such as
-        "overflown_address": "rbp-0x10",
-        "fnname": "fgets",
-        "vuln_function": "main",
-        "address": "400539",
-        "vulnerability": "INVALIDACCS",
-        "overflow_var": "buf"
-    """
     util.prin("Adding the following vulnerability to " + outputfilename)
     print(util.bcolors.OKGREEN)
     pprint(vulnerability)
     print(util.bcolors.ENDC)
-    # TODO: actually add it to the file
-    vulnerabilities.append(vulnerability)   
-    
+    vulnerabilities.append(vulnerability)
 
 
 def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflow_var='', address='', overflown_var='',
@@ -103,16 +93,17 @@ def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflo
         'fnname': fn_name,
         'overflow_var': overflow_var,
         'address': address}
-    if vulnerability not in ['RBPOVERFLOW', 'INVALIDACCS', 'SCORRUPTION','RETOVERFLOW']:
+    if vulnerability not in ['RBPOVERFLOW', 'INVALIDACCS', 'SCORRUPTION', 'RETOVERFLOW']:
         vuln['overflown_var'] = overflown_var
     elif vulnerability in ['INVALIDACCS', 'SCORRUPTION']:
         vuln['overflown_address'] = overflown_address
 
     return vuln
 
+
 def write_json():
-    f= open(outputfilename,"a")
-    #f.write(str(vulnerability))
-    json.dump(vulnerabilities,f,indent=4)
+    f = open(outputfilename, "a")
+    # f.write(str(vulnerability))
+    json.dump(vulnerabilities, f, indent=4)
     f.write("\n")
     f.close()

@@ -19,6 +19,10 @@ reg_match = {
                       'c': lambda x: int(x[15:len(x) - 1], 16),
                       'get_reg': lambda x: x[11:14],
                       'get_sign': lambda x: x[14]},
+    'byte_address': {'m': re.compile('BYTE PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
+                     'c': lambda x: int(x[14:len(x) - 1], 16),
+                     'get_reg': lambda x: x[10:13],
+                     'get_sign': lambda x: x[13]},
     'rbp_address': {'m': re.compile('\[rbp-0x[0-9a-f]+\]'), 'c': lambda x: int(x[5:len(x) - 1], 16)},
     'rbp_address_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
     'relative_rbp_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
@@ -49,13 +53,13 @@ class Register:
         else:
             self.val = val
 
-    def get_val(self, is_e_val: bool = False):
+    def get_val(self, is_e_val: bool = False) -> int:
         if is_e_val:
             return self.e_val
         else:
             return self.val
 
-    def __init__(self, name: str, val: int = -1):
+    def __init__(self, name: str, val=None):
         self.name = name
         if name[0] == 'e':
             self.e_val = val
@@ -74,27 +78,33 @@ class Register:
 class Segment:
     relative_to = 'rbp'
     bytes = 0
-    val = None
+    val = 0
     var = None
 
-    def __init__(self, bytes, var: dict=None):
+    def get_val(self):
+        return self.val
+
+    def __init__(self, bytes, var: dict = None, val: int = 0):
         if isinstance(bytes, int):
             self.bytes = bytes
         elif bytes == 'QWORD':
             self.bytes = 8
         elif bytes == 'DWORD':
             self.bytes = 4
+        elif bytes == 'BYTE':
+            self.bytes = 1
         elif bytes == 'rbp':
             self.bytes = -8
 
         self.var = var
+        self.val = val
 
     def __repr__(self):
         appendix = ''
         if self.val:
             appendix = " with value " + str(self.val)
         if self.var:
-            appendix = " with var " + str(self.var)
+            appendix = appendix + " with " + str(self.var)
         return "Segment of " + str(self.bytes) + " bytes" + appendix
 
 
@@ -110,7 +120,7 @@ class Variable:
         self.bytes_filled = self.bytes_filled + bytes
 
     def __repr__(self):
-        return "Variable: " + self.name + str(self.bytes) + str(self.rbp_distance) + self.type
+        return "Variable: " + self.name + " " + str(self.bytes) + " " + str(self.rbp_distance) + " " + self.type
 
     def __init__(self, json_data: dict):
         self.address = json_data['address']
@@ -162,59 +172,136 @@ class State:
         s = s + indent + "end of state\n"
         return s
 
-    def get_seg(self, address, at_e_val: bool=False) -> Segment:
+    def get_seg(self, address, at_e_val: bool = False) -> Segment:
         if isinstance(address, int):
             return self.stack[address]
         elif at_e_val or isinstance(address, Register):
             return self.stack[address.get_val(at_e_val)]
+
+    def add_seg(self, pos: int, seg: Segment) -> None:
+        self.stack[pos] = seg
 
     def get_reg_val(self, reg: str) -> Register:
         if reg[0] == 'e':
             reg = 'r' + reg[1:]
         return self.reg_vals[reg]
 
+    def get_address_type(self, address: str) -> dict:
+        if address[0] == 'B':
+            block = {'type': 'mem', 'len': 'BYTE', 'relative': address[10:13], 'sign': address[13],
+                     'val': int(address[14:len(address) - 1], 16)}
+            return block
+        elif address[0] in ['Q', 'D']:
+            block = {'type': 'mem', 'len': address[:5], 'relative': address[11:14], 'sign': address[14],
+                     'val': int(address[15:len(address) - 1], 16)}
+            if address[:17] == 'QWORD PTR [rip+0x':
+                block['ignore'] = True
+            else:
+                block['ignore'] = False
+            return block
+        elif address[0] == '[':
+            return {'type': 'mem', 'relative': address[1:4], 'sign': address[4],
+                    'val': int(address[5:len(address) - 1], 16)}
+        elif address[0] == '0':
+            val = int(address, 16)
+            return {'type': 'num', 'val': val}
+        else:
+            if address[0] == 'e':
+                address2 = 'r' + address[1:]
+                is_e = True
+            else:
+                address2 = address
+                is_e = False
+
+            if address2 in self.reg_vals.keys():
+                return {'type': 'reg', 'reg': self.reg_vals[address2], 'is_e': is_e}
+            else:
+                the_reg = Register(address2)
+                self.reg_vals[address2] = the_reg
+                return {'type': 'reg', 'reg': the_reg, 'is_e': is_e}
+
+    def memory_op(self, inst: str, dest: dict, src: dict) -> None:
+        #print(dest)
+        #print(src)
+        #print('----- now analyzing')
+        done = False
+        if inst == 'sub':
+            if dest['type'] == 'reg':
+                if src['type'] == 'reg':
+                    pass
+                elif src['type'] == 'num':
+                    val1 = self.get_reg_val(dest['reg'].name).get_val(dest['is_e'])
+                    val2 = src['val']
+                    dest['reg'].set_val(val1 - val2, dest['is_e'])
+                    done = True
+                elif src['type'] == 'mem':
+                    pass
+            elif dest['type'] == 'mem':
+                if src['type'] == 'reg':
+                    pass
+                elif src['type'] == 'num':
+                    pass
+        elif inst == 'lea':
+            # src always memory, dest always register
+            offset = src['val']
+            self.reg_vals[dest['reg'].name].set_val(-offset)
+            done = True
+        elif inst == 'mov':
+            if dest['type'] == 'reg':
+                if src['type'] == 'reg':
+                    the_copy = deepcopy(src['reg'])
+                    the_copy.name = dest['reg'].name
+                    self.reg_vals[dest['reg'].name] = the_copy
+                    done = True
+                elif src['type'] == 'num':
+                    self.reg_vals[dest['reg'].name].set_val(src['val'], dest['is_e'])
+                    done = True
+                elif src['type'] == 'mem':
+                    if src['ignore']:
+                        done = True
+                    else:
+                        seg = self.get_seg(-src['val'])
+                        self.reg_vals[dest['reg'].name].set_val(seg.val, dest['is_e'])
+                        done = True
+
+            elif dest['type'] == 'mem':
+                if src['type'] == 'reg':
+                    pass
+                elif src['type'] == 'num':
+                    offset = dest['val']
+                    if -offset in self.stack.keys():
+                        existing_segment = self.get_seg(-offset)
+                        existing_segment.val = src['val']
+                        done = True
+
+        #print("Stack now")
+        #print(self.stack)
+        #print("Reg now")
+        #print(self.reg_vals)
+        if not done:
+            print("---------------------------")
+            print(inst)
+            print(dest)
+            print(src)
+            print(bcolors.FAIL)
+            print("INSTRUCTION NOT ANALYZED")
+            print(bcolors.ENDC)
 
     def add_reg_val(self, inst: str, reg: str, val: str) -> None:
         """Adds to the registers of the current state the new value at register reg. How this is handled
         depends on the instruction inst, which is sub, mov or lea.
         """
+        #print('\n-----------------------', self.f_n)
+        #print(inst + " " + reg + " " + val)
 
-        done = False
-        the_reg = None
+        dest = self.get_address_type(reg)
+        src = self.get_address_type(val)
 
-        if reg[0] == 'e':
-            reg2 = 'r' + reg[1:]
-            is_e = True
-        else:
-            reg2 = reg
-            is_e = False
+        self.memory_op(inst, dest, src)
 
-        if reg2 in reg_names:  # dest is a register
-
-            if reg2 in self.reg_vals.keys(): # register already exists
-                the_reg = self.reg_vals[reg2]
-            else:
-                the_reg = Register(reg)
-
-            if val in reg_names:  # val is a register
-                if inst == 'mov':
-                    # put content of the register val into reg
-                    the_reg = deepcopy(self.reg_vals[val])
-                    the_reg.name = reg2
-                    done = True
-
-            elif reg_match['hex_num']['m'].match(val):  # val is a hex number
-                # convert to int
-                val = reg_match['hex_num']['c'](val)
-                if inst == 'sub':
-                    the_reg.set_val(val, is_e)
-                    done = True
-                elif inst == 'mov':
-                    the_reg.set_val(val, is_e)
-                    done = True
-
-            elif reg_match['qword_address']['m'].match(val):  # value is qword memory
-                if not val[:17] == 'QWORD PTR [rip+0x': # exclude those strange QWORD things, I think they're user input
+        """   elif reg_match['qword_address']['m'].match(val):  # value is qword memory
+                if not val[
+                       :17] == 'QWORD PTR [rip+0x':  # exclude those strange QWORD things, I think they're user input
                     offset = reg_match['qword_address']['c'](val)
                     reg_new = reg_match['qword_address']['get_reg'](val)
                     sign = reg_match['qword_address']['get_sign'](val)
@@ -226,14 +313,15 @@ class State:
                     else:
                         print('value not found, add code here')
                 else:
-                    done = True
+                    done = Trueval[
+                       :17] == 'QWORD PTR [rip+0x'
 
             elif reg_match['rbp_address']['m'].match(val):  # value is like [rbp-0x50]
                 val = reg_match['rbp_address']['c'](val)
                 if inst == 'mov':
                     # put into reg the next 64 bytes at memory -val
                     pass
-                    #done = True
+                    # done = True
                 elif inst == 'lea':
                     # put the address, that is the offset from rbp into the register
                     the_reg.set_val(-val, is_e)
@@ -242,7 +330,7 @@ class State:
         elif reg_match['dword_address']['m'].match(reg):  # register is memory, dword long
             # offset from rbp
             reg_offset = reg_match['dword_address']['c'](reg)
-            if self.stack[-reg_offset]:  # there is something at that memory address
+            if -reg_offset in self.stack.keys():  # there is something at that memory address
                 if self.stack[-reg_offset].var:  # one of the local variables
                     if reg_match['hex_num']['m'].match(val):  # val is a hex number
                         # convert to int
@@ -250,18 +338,33 @@ class State:
                         if self.stack[-reg_offset].bytes == 4:  # the value inserted is as long as the variable
                             self.stack[-reg_offset].val = val
                             done = True
-
-
-        if done:
-            self.reg_vals[reg2] = the_reg
-            #print(self.stack)
-            #print(self.reg_vals)
-        else:
-            print('\n-----------------------', self.f_n)
-            print(inst + " " + reg + " " + val)
-            print(bcolors.FAIL)
-            print("INSTRUCTION NOT ANALYZED")
-            print(bcolors.ENDC)
+        elif reg_match['qword_address']['m'].match(reg):  # register is memory, dword long
+            # offset from rbp
+            print(self.stack)
+            print(self.reg_vals)
+            reg_offset = reg_match['qword_address']['c'](reg)
+            if -reg_offset in self.stack.keys():  # there is something at that memory address
+                if self.stack[-reg_offset].var:  # one of the local variables
+                    # val is a hex number
+                    # has not occurred yet
+                    if reg_match['hex_num']['m'].match(val):
+                        # convert to int
+                        val = reg_match['hex_num']['c'](val)
+                        # the value inserted is as long as the variable
+                        if self.stack[-reg_offset].bytes == 8:
+                            self.stack[-reg_offset].val = val
+                            done = True
+        elif reg_match['byte_address']['m'].match(reg): # register is memory, byte long
+            reg_offset = reg_match['byte_address']['c'](reg)
+            if -reg_offset in self.stack.keys():  # there is something at that memory address
+               pass
+            else:
+                if reg_match['hex_num']['m'].match(val):  # val is a hex number
+                    # convert to int
+                    val = reg_match['hex_num']['c'](val)
+                    seg = Segment('BYTE', val=val)
+                    self.add_seg(-reg_offset, seg)
+                    done = True"""
 
 
 def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: list = []) -> list:
@@ -352,7 +455,7 @@ def process_json(the_data):
         var[f_n] = data[f_n]['variables']
 
     # initialize the stack
-    stack = {'0': Segment('rbp')}
+    stack = {0: Segment('rbp')}
 
     add_variable_positions(stack)
 

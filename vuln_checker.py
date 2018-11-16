@@ -294,7 +294,7 @@ def main(name: str):
 
     # print statements
     #print_list()
-    #pprint(variables)
+    pprint(variables)
     # pprint(dangerous_functions_occurring)
 
     # analyze each dangerous function call
@@ -302,8 +302,7 @@ def main(name: str):
         dangerous_functions[state.called_fn](state)
 
     jsonio.write_json()
-    
-    return
+
 
 if __name__ == "__main__":
     import sys
