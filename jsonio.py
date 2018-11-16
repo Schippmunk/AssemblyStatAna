@@ -1,6 +1,8 @@
 import json
 import util
 from pprint import pprint
+import os
+import fnmatch
 
 inputfilename = ''
 outputfilename = ''
@@ -10,7 +12,15 @@ def parser(name):
     """Opens JSON file and calls parse_json with it"""
 
     global inputfilename
-    inputfilename = "public_tests/test" + name + ".json";
+
+    pattern = "*" + name + "*.json"
+
+    for file in os.listdir('./public_tests'):
+        #match test number + .json, and not output.json
+        if fnmatch.fnmatch(file,pattern) and (not fnmatch.fnmatch(file,"*output.json")):
+            inputfilename = "public_tests/" + file
+            break
+
     global outputfilename
     outputfilename = "public_tests/test" + name + ".OURoutput.json"
 
@@ -93,7 +103,7 @@ def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflo
         'fnname': fn_name,
         'overflow_var': overflow_var,
         'address': address}
-    if vulnerability not in ['RBPOVERFLOW', 'INVALIDACCS', 'SCORRUPTION']:
+    if vulnerability not in ['RBPOVERFLOW', 'INVALIDACCS', 'SCORRUPTION','RETOVERFLOW']:
         vuln['overflown_var'] = overflown_var
     elif vulnerability in ['INVALIDACCS', 'SCORRUPTION']:
         vuln['overflown_address'] = overflown_address
