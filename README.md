@@ -1,3 +1,15 @@
+Call the program as follows:
+python3.7 bo-analyser.py "testfile.json"
+
+NOTE: python3.7 is required, 3.6 is not good enough
+
+
+
+
+
+
+IGNORE THIS, THESE ARE JUST SOME NOTES
+
 https://godbolt.org/
 is where you can put in a C program and obtain Assembly output.
 The tests given to us really aren't sufficient.

@@ -11,12 +11,30 @@ p = []
 dangerous_functions_occurring = []
 # the variables declared in json, indexed by offset from rbp
 variables = {}
+var = {}
 # the dangerous fuctions we consider
 dangerous_functions = ['<gets@plt>', '<strcpy@plt>', '<strcat@plt>',
                        '<fgets@plt>', '<strncpy@plt>', '<strncat@plt>']
 # the names of the registers used
 reg_names = ['rax', 'rbx', 'rcx', 'rdx', 'rdi', 'rsi', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbp',
              'rsp', 'rip']
+# a matcher of adresses, together with handlers
+reg_match = {
+    'dword_address': {'m': re.compile('DWORD PTR \[(rbp|rip)[+-]0x[0-9a-f]+\]'),
+                      'c': lambda x: int(x[15:len(x) - 1], 16)},
+    'qword_address': {'m': re.compile('QWORD PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
+                      'c': lambda x: int(x[15:len(x) - 1], 16),
+                      'get_reg': lambda x: x[11:14],
+                      'get_sign': lambda x: x[14]},
+    'byte_address': {'m': re.compile('BYTE PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
+                     'c': lambda x: int(x[14:len(x) - 1], 16),
+                     'get_reg': lambda x: x[10:13],
+                     'get_sign': lambda x: x[13]},
+    'rbp_address': {'m': re.compile('\[rbp-0x[0-9a-f]+\]'), 'c': lambda x: int(x[5:len(x) - 1], 16)},
+    'rbp_address_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
+    'relative_rbp_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
+    'hex_num': {'m': re.compile('0x[0-9a-f]+'), 'c': lambda x: int(x, 16)}
+}
 
 
 class Register:
