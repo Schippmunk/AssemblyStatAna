@@ -69,10 +69,7 @@ def create_output_file():
 def add_vulnerability(vulnerability):
     """Appends the vulnerability to filename name"""
 
-    util.prin("Adding the following vulnerability to " + outputfilename)
-    print(util.bcolors.OKGREEN)
-    pprint(vulnerability)
-    print(util.bcolors.ENDC)
+    #util.prin("Adding the following vulnerability to " + outputfilename)
     vulnerabilities.append(vulnerability)
 
 

@@ -279,13 +279,14 @@ class State:
         #print("Reg now")
         #print(self.reg_vals)
         if not done:
-            print("---------------------------")
-            print(inst)
-            print(dest)
-            print(src)
-            print(bcolors.FAIL)
-            print("INSTRUCTION NOT ANALYZED")
-            print(bcolors.ENDC)
+            return
+#            print("---------------------------")
+#            print(inst)
+#            print(dest)
+#            print(src)
+#            print(bcolors.FAIL)
+#            print("INSTRUCTION NOT ANALYZED")
+#            print(bcolors.ENDC)
 
     def add_reg_val(self, inst: str, reg: str, val: str) -> None:
         """Adds to the registers of the current state the new value at register reg. How this is handled
