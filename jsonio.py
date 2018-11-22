@@ -16,7 +16,7 @@ def parser(name):
     inputfilename = name
 
     global outputfilename
-    outputfilename = name[:len(name) - 4] + "output.json"
+    outputfilename = name[:len(name) - 4] + "output2.json"
 
     try:
         with open(inputfilename) as f:

@@ -20,20 +20,20 @@ reg_names = ['rax', 'rbx', 'rcx', 'rdx', 'rdi', 'rsi', 'r8', 'r9', 'r10', 'r11',
              'rsp', 'rip']
 # a matcher of adresses, together with handlers
 reg_match = {
-    'dword_address': {'m': re.compile('DWORD PTR \[(rbp|rip)[+-]0x[0-9a-f]+\]'),
-                      'c': lambda x: int(x[15:len(x) - 1], 16)},
-    'qword_address': {'m': re.compile('QWORD PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
-                      'c': lambda x: int(x[15:len(x) - 1], 16),
-                      'get_reg': lambda x: x[11:14],
-                      'get_sign': lambda x: x[14]},
-    'byte_address': {'m': re.compile('BYTE PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
-                     'c': lambda x: int(x[14:len(x) - 1], 16),
-                     'get_reg': lambda x: x[10:13],
-                     'get_sign': lambda x: x[13]},
-    'rbp_address': {'m': re.compile('\[rbp-0x[0-9a-f]+\]'), 'c': lambda x: int(x[5:len(x) - 1], 16)},
-    'rbp_address_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
-    'relative_rbp_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
-    'hex_num': {'m': re.compile('0x[0-9a-f]+'), 'c': lambda x: int(x, 16)}
+    #'dword_address': {'m': re.compile('DWORD PTR \[(rbp|rip)[+-]0x[0-9a-f]+\]'),
+    #                  'c': lambda x: int(x[15:len(x) - 1], 16)},
+    #'qword_address': {'m': re.compile('QWORD PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
+    #                  'c': lambda x: int(x[15:len(x) - 1], 16),
+    #                  'get_reg': lambda x: x[11:14],
+    #                  'get_sign': lambda x: x[14]},
+    #'byte_address': {'m': re.compile('BYTE PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
+    #                 'c': lambda x: int(x[14:len(x) - 1], 16),
+    #                 'get_reg': lambda x: x[10:13],
+    #                 'get_sign': lambda x: x[13]},
+    #'rbp_address': {'m': re.compile('\[rbp-0x[0-9a-f]+\]'), 'c': lambda x: int(x[5:len(x) - 1], 16)},
+    #'rbp_address_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
+    'relative_rbp_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)}
+    #'hex_num': {'m': re.compile('0x[0-9a-f]+'), 'c': lambda x: int(x, 16)}
 }
 
 
@@ -294,9 +294,9 @@ class State:
         get_address_type
         """
 
-        # print(dest)
-        # print(src)
-        # print('----- now analyzing')
+        print(dest)
+        print(src)
+        print('----- now analyzing')
         done = False
         if inst == 'sub':
             # handle sub instruction
@@ -396,8 +396,8 @@ class State:
         """Adds to the registers of the current state the new value at register reg. How this is handled
         depends on the instruction inst, which is sub, mov or lea.
         """
-        # print('\n-----------------------', self.f_n)
-        # print(inst + " " + reg + " " + val)
+        print('\n-----------------------', self.f_n)
+        print(inst + " " + reg + " " + val)
 
         dest = self.get_address_type(reg)
         src = self.get_address_type(val)
@@ -484,11 +484,14 @@ def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: list = []) -> 
     The prev_reg param, and return value are just for the recursive calls of the function.
     When called initially, append_to should be a global list like p
     """
+
     global dangerous_functions_occurring
+
     # Create the new state of this program
     s = State()
     s.f_n = f_n
     s.inst = inst
+
     # initialize with registers of previous state
     s.reg_vals = prev_reg[0]
     s.stack = prev_reg[1]
@@ -554,25 +557,29 @@ def print_list():
 
 def process_json(the_data):
     """Starts the analysis. Sets global vars and calls analysis functions with initial values"""
+
     global data, var, p
     data = the_data
-    # pprint(data)
 
     # Get function names
     func_names = data.keys()
-    # Parse vars and instrs for each function
+
+    # Parse vars  for each function
     for f_n in func_names:
         var[f_n] = data[f_n]['variables']
 
     # initialize the stack
     stack = {0: Segment('rbp')}
 
+    # add variables to the stack
     add_variable_positions(stack)
 
     # initialize the registers
     reg = {'rbp': Register('rbp'), 'rsp': Register('rsp', 0)}
+
     prev_reg = [reg, stack]
 
     # analyze the program
     for inst in data['main']['instructions']:
+        # each new instruction uses a deep copy of the previous state
         prev_reg = analyze_inst(inst, 'main', p, deepcopy(prev_reg))
