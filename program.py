@@ -1,5 +1,5 @@
-from pprint import pprint
 from pprint import pformat
+import re
 from copy import deepcopy
 from util import *
 
@@ -476,9 +476,9 @@ def print_list():
 
 def process_json(the_data):
     """Starts the analysis. Sets global vars and calls analysis functions with initial values"""
+    
     global data, var, p
     data = the_data
-    # pprint(data)
 
     # Get function names
     func_names = data.keys()
