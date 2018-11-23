@@ -44,6 +44,7 @@ def check_strncat(state: State) -> None:
     # source
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
+    # check how many bytes are actually filled in source buffer
     src_len = variables[state.f_n][source].bytes_filled
 
     # input length
@@ -53,14 +54,23 @@ def check_strncat(state: State) -> None:
     # destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
+    # check size of destination buffer
     dest_len = variables[state.f_n][destination].bytes
+    # check how many bytes are actually filled in destination buffer
     dest_len_f = variables[state.f_n][destination].bytes_filled
 
+    # first check if the number bytes to be appended is greater than the free space of destination
     if input_len > (dest_len - dest_len_f):
-
+        # now check if the number bytes in the source that are filled is greater than the free space of destination
         if src_len > (dest_len - dest_len_f):
-            # now check what can be overflown
-            total_length = dest_len_f + src_len
+            # at this point, buffer overflow is possible, check what are the consequences
+
+            if src_len > input_len:
+                total_length = dest_len_f + input_len
+
+            else:
+                total_length = dest_len_f + src_len
+
             check_rbp_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
             check_var_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
             check_ret_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
@@ -90,7 +100,7 @@ def check_strncpy(state: State) -> None:
         dng_strcpy.append(variables[state.f_n][destination].name)
 
     if input_len > dest_len:
-        check_overflow_consequences(state, input_len, destination, "strcpy")
+        check_overflow_consequences(state, input_len, destination, "strncpy")
 
 
 def check_strcpy(state: State) -> None:
