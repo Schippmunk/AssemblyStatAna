@@ -1,40 +1,28 @@
 from pprint import pprint
 from pprint import pformat
-from copy import copy, deepcopy
+from copy import deepcopy
 from util import *
 
 # the raw imported json file
 data = {}
+
 # the processed list of states
 p = []
+
 # the states of p containing a call to a dangerous function
 dangerous_functions_occurring = []
+
 # the variables declared in json, indexed by offset from rbp
 variables = {}
 var = {}
+
 # the dangerous fuctions we consider
 dangerous_functions = ['<gets@plt>', '<strcpy@plt>', '<strcat@plt>',
                        '<fgets@plt>', '<strncpy@plt>', '<strncat@plt>']
+
 # the names of the registers used
 reg_names = ['rax', 'rbx', 'rcx', 'rdx', 'rdi', 'rsi', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbp',
              'rsp', 'rip']
-# a matcher of adresses, together with handlers
-reg_match = {
-    'dword_address': {'m': re.compile('DWORD PTR \[(rbp|rip)[+-]0x[0-9a-f]+\]'),
-                      'c': lambda x: int(x[15:len(x) - 1], 16)},
-    'qword_address': {'m': re.compile('QWORD PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
-                      'c': lambda x: int(x[15:len(x) - 1], 16),
-                      'get_reg': lambda x: x[11:14],
-                      'get_sign': lambda x: x[14]},
-    'byte_address': {'m': re.compile('BYTE PTR \[(rbp|rip|rdx)[+-]0x[0-9a-f]+\]'),
-                     'c': lambda x: int(x[14:len(x) - 1], 16),
-                     'get_reg': lambda x: x[10:13],
-                     'get_sign': lambda x: x[13]},
-    'rbp_address': {'m': re.compile('\[rbp-0x[0-9a-f]+\]'), 'c': lambda x: int(x[5:len(x) - 1], 16)},
-    'rbp_address_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
-    'relative_rbp_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)},
-    'hex_num': {'m': re.compile('0x[0-9a-f]+'), 'c': lambda x: int(x, 16)}
-}
 
 
 class Register:
@@ -164,6 +152,11 @@ class Variable:
         self.name = json_data['name']
         self.type = json_data['type']
 
+        # a matcher of adresses, together with handlers
+        reg_match = {
+            'relative_rbp_trimmed': {'m': re.compile('rbp-0x[0-9a-f]+'), 'c': lambda x: int(x[4:], 16)}
+        }
+        # use it to convert
         rbp_distance = reg_match['relative_rbp_trimmed']['c'](json_data['address'])
         self.rbp_distance = - rbp_distance
         self.bytes_filled = 0
@@ -396,80 +389,11 @@ class State:
         """Adds to the registers of the current state the new value at register reg. How this is handled
         depends on the instruction inst, which is sub, mov or lea.
         """
-        # print('\n-----------------------', self.f_n)
-        # print(inst + " " + reg + " " + val)
 
         dest = self.get_address_type(reg)
         src = self.get_address_type(val)
 
         self.memory_op(inst, dest, src)
-
-        """   elif reg_match['qword_address']['m'].match(val):  # value is qword memory
-                if not val[
-                       :17] == 'QWORD PTR [rip+0x':  # exclude those strange QWORD things, I think they're user input
-                    offset = reg_match['qword_address']['c'](val)
-                    reg_new = reg_match['qword_address']['get_reg'](val)
-                    sign = reg_match['qword_address']['get_sign'](val)
-                    if sign == '-':
-                        offset = -offset
-                    # load qword bytes from stack and put them in reg
-                    if offset in self.stack.keys():
-                        print('value found, add code here')
-                    else:
-                        print('value not found, add code here')
-                else:
-                    done = Trueval[
-                       :17] == 'QWORD PTR [rip+0x'
-
-            elif reg_match['rbp_address']['m'].match(val):  # value is like [rbp-0x50]
-                val = reg_match['rbp_address']['c'](val)
-                if inst == 'mov':
-                    # put into reg the next 64 bytes at memory -val
-                    pass
-                    # done = True
-                elif inst == 'lea':
-                    # put the address, that is the offset from rbp into the register
-                    the_reg.set_val(-val, is_e)
-                    done = True
-
-        elif reg_match['dword_address']['m'].match(reg):  # register is memory, dword long
-            # offset from rbp
-            reg_offset = reg_match['dword_address']['c'](reg)
-            if -reg_offset in self.stack.keys():  # there is something at that memory address
-                if self.stack[-reg_offset].var:  # one of the local variables
-                    if reg_match['hex_num']['m'].match(val):  # val is a hex number
-                        # convert to int
-                        val = reg_match['hex_num']['c'](val)
-                        if self.stack[-reg_offset].bytes == 4:  # the value inserted is as long as the variable
-                            self.stack[-reg_offset].val = val
-                            done = True
-        elif reg_match['qword_address']['m'].match(reg):  # register is memory, dword long
-            # offset from rbp
-            print(self.stack)
-            print(self.reg_vals)
-            reg_offset = reg_match['qword_address']['c'](reg)
-            if -reg_offset in self.stack.keys():  # there is something at that memory address
-                if self.stack[-reg_offset].var:  # one of the local variables
-                    # val is a hex number
-                    # has not occurred yet
-                    if reg_match['hex_num']['m'].match(val):
-                        # convert to int
-                        val = reg_match['hex_num']['c'](val)
-                        # the value inserted is as long as the variable
-                        if self.stack[-reg_offset].bytes == 8:
-                            self.stack[-reg_offset].val = val
-                            done = True
-        elif reg_match['byte_address']['m'].match(reg): # register is memory, byte long
-            reg_offset = reg_match['byte_address']['c'](reg)
-            if -reg_offset in self.stack.keys():  # there is something at that memory address
-               pass
-            else:
-                if reg_match['hex_num']['m'].match(val):  # val is a hex number
-                    # convert to int
-                    val = reg_match['hex_num']['c'](val)
-                    seg = Segment('BYTE', val=val)
-                    self.add_seg(-reg_offset, seg)
-                    done = True"""
 
 
 def analyze_inst(inst: dict, f_n: str, append_to: list, prev_reg: list = []) -> list:
@@ -541,8 +465,6 @@ def add_variable_positions(stack: dict) -> None:
             v = Variable(v)
             stack[v.rbp_distance] = Segment(v.bytes, v)
             variables[f_n][v.rbp_distance] = v
-    # TODO: See if this actually sorts by keys
-    sorted(variables)
 
 
 def print_list():

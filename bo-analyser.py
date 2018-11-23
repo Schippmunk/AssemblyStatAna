@@ -1,16 +1,9 @@
 # allows annotating states from program.py even though State is declared afterwards
 from __future__ import annotations
 
-# regular expressions used to match addresses
-import re
-
 # our other modules
 import jsonio
 from program import *
-from util import *
-
-# pprint used for debugging
-from pprint import pprint
 
 # holds all information about the program
 data = {}
@@ -21,7 +14,9 @@ dng_strcpy = []
 # checking functions
 
 
-def check_strcat(state):
+def check_strcat(state: State) -> None:
+    """Given a state, checks if there exist vulnerabilities due to an strcat call"""
+
     # source
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
@@ -35,25 +30,26 @@ def check_strcat(state):
 
     if src_len > (dest_len - dest_len_f):
         # now check what can be overflown
-
         total_length = dest_len_f + src_len
         check_rbp_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
         check_var_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
         check_ret_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
         check_s_corruption(state, total_length, variables[state.f_n][destination], 'strcat')
-        check_inavlidAcc_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
-    else:
-        return
+        check_invalid_acc_overflow(state, total_length, variables[state.f_n][destination], 'strcat')
 
 
-def check_strncat(state):
+def check_strncat(state: State) -> None:
+    """Given a state, checks if there exist vulnerabilities due to an strncat call"""
+
     # source
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
 
+    # input length
     input_len = state.get_reg_val('edx')
     input_len = input_len.get_val(True)
+
     # destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
@@ -69,25 +65,23 @@ def check_strncat(state):
             check_var_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
             check_ret_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
             check_s_corruption(state, total_length, variables[state.f_n][destination], 'strncat')
-            check_inavlidAcc_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
-        else:
-            return
-
-    else:
-        return
-
-    return
+            check_invalid_acc_overflow(state, total_length, variables[state.f_n][destination], 'strncat')
 
 
-def check_strncpy(state):
+def check_strncpy(state: State) -> None:
+    """Given a state, checks if there exist vulnerabilities due to an strncpy call"""
+
+    # destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
 
+    # source
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
 
+    # input length
     input_len = state.get_reg_val('edx')
     input_len = input_len.get_val(True)
 
@@ -97,15 +91,17 @@ def check_strncpy(state):
 
     if input_len > dest_len:
         check_overflow_consequences(state, input_len, destination, "strcpy")
-    else:
-        return
 
 
-def check_strcpy(state):
+def check_strcpy(state: State) -> None:
+    """Given a state, checks if there exist vulnerabilities due to an strcpy call"""
+
+    # destination
     destination_buf = state.get_reg_val('rdi')
     destination = destination_buf.get_val()
     dest_len = variables[state.f_n][destination].bytes
 
+    # source
     source_buf = state.get_reg_val('rsi')
     source = source_buf.get_val()
     src_len = variables[state.f_n][source].bytes_filled
@@ -114,11 +110,12 @@ def check_strcpy(state):
         check_overflow_consequences(state, src_len, destination, "strcpy")
     elif variables[state.f_n][source].name in dng_strcpy:
         check_overflow_consequences(state, 9999, destination, "strcpy")
-    else:
-        return
 
 
-def check_gets(state: State):
+def check_gets(state: State) -> None:
+    """Given a state, checks if there exist vulnerabilities due to a gets call"""
+
+    # buffer / destination
     buf_address = state.get_reg_val('rdi')
     seg = state.get_seg(buf_address)
 
@@ -152,11 +149,15 @@ def check_gets(state: State):
 
 
 def check_fgets(state: State) -> None:
-    """Assumes the buffer gets loaded from rax and the input from esi"""
+    """Given a state, checks if there exist vulnerabilities due to an strcat call
 
+    Assumes the buffer gets loaded from rax and the input from esi"""
+
+    # input length
     input_len = state.get_reg_val('esi')
     input_len = input_len.get_val(True)
 
+    # buffer address
     buf_address = state.get_reg_val('rdi')
     buf_address = buf_address.get_val()
 
@@ -169,20 +170,15 @@ def check_overflow_consequences(state: State, input_length: int, buf_address: in
     # find the buf variable among the local vars of f_n
     buf = variables[state.f_n][buf_address]
 
-    if dng_func == "gets":
-        pass
-    elif buf:
+    if buf:
         buf.fill(input_length)
-        # TODO: check if because of nullcharacter at end of string of input, this has to be input_length < buf['bytes']
         if input_length > buf.bytes:
             # now check what can be overflown
             check_rbp_overflow(state, input_length, buf, dng_func)
             check_var_overflow(state, input_length, buf, dng_func)
             check_ret_overflow(state, input_length, buf, dng_func)
             check_s_corruption(state, input_length, buf, dng_func)
-            check_inavlidAcc_overflow(state, input_length, buf, dng_func)
-        else:
-            return
+            check_invalid_acc_overflow(state, input_length, buf, dng_func)
 
 
 def check_rbp_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
@@ -206,7 +202,7 @@ def check_ret_overflow(state: State, input_length: int, buf, instruction_name: s
         jsonio.add_vulnerability(vuln)
 
 
-def check_inavlidAcc_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
+def check_invalid_acc_overflow(state: State, input_length: int, buf, instruction_name: str) -> None:
     """check for inavlidAcc"""
 
     # sort keys of vars in function f_n
@@ -265,7 +261,7 @@ dangerous_functions = {'<gets@plt>': check_gets, '<strcpy@plt>': check_strcpy, '
                        '<fgets@plt>': check_fgets, '<strncpy@plt>': check_strncpy, '<strncat@plt>': check_strncat}
 
 
-def main(name: str):
+def main(name: str) -> None:
     """Delegates steps of the static analysis: reads file, processes it, saves output"""
 
     json_data = jsonio.parser(name)
@@ -281,6 +277,7 @@ def main(name: str):
 
 if __name__ == "__main__":
     """Entry point of the program"""
+
     import sys
 
     main(sys.argv[1])

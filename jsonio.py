@@ -1,15 +1,11 @@
 import json
-import util
-from pprint import pprint
-import os
-import fnmatch
 
 inputfilename = ''
 outputfilename = ''
 vulnerabilities = []
 
 
-def parser(name):
+def parser(name: str) -> dict:
     """Opens JSON file and calls parse_json with it"""
 
     global inputfilename
@@ -29,26 +25,7 @@ def parser(name):
     return data
 
 
-def parser_path(path: str) -> dict:
-    """Opens JSON file and calls parse_json with it"""
-
-    global inputfilename
-    inputfilename = path
-    global outputfilename
-    outputfilename = path[:len(path) - 4] + ".output.json"
-
-    try:
-        with open(inputfilename) as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        print("No such file or directory:", inputfilename)
-        return None
-    create_output_file()
-
-    return parse_json(data)
-
-
-def parse_json(data):
+def parse_json(data: dict) -> dict:
     result = {'data': data, 'vars': {}}
 
     # Get function names
@@ -60,21 +37,22 @@ def parse_json(data):
     return result
 
 
-def create_output_file():
+def create_output_file() -> None:
     """Creates the output file with filename outputfilename"""
 
     f = open(outputfilename, "w+")
 
 
-def add_vulnerability(vulnerability):
+def add_vulnerability(vulnerability: dict) -> None:
     """Appends the vulnerability to filename name"""
 
-    #util.prin("Adding the following vulnerability to " + outputfilename)
+    # util.prin("Adding the following vulnerability to " + outputfilename)
     vulnerabilities.append(vulnerability)
 
 
-def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflow_var='', address='', overflown_var='',
-                         overflown_address=''):
+def create_vulnerability(vulnerability: str = '', vuln_function: str = '', fn_name: str = '', overflow_var: str = '',
+                         address: str = '', overflown_var: str = '',
+                         overflown_address: str = '') -> dict:
     """Produces a dictionary in the desired output format"""
 
     vuln = {
@@ -91,7 +69,7 @@ def create_vulnerability(vulnerability='', vuln_function='', fn_name='', overflo
     return vuln
 
 
-def write_json():
+def write_json() -> None:
     f = open(outputfilename, "a")
     # f.write(str(vulnerability))
     json.dump(vulnerabilities, f, indent=4)
