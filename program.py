@@ -124,7 +124,7 @@ class Segment:
         elif bytes == 'BYTE':
             self.bytes = 1
         elif bytes == 'rbp':
-            self.bytes = -8
+            self.bytes = 8
 
         self.var = var
         self.val = val
@@ -224,6 +224,10 @@ class State:
             return self.stack[address]
         elif at_e_val or isinstance(address, Register):
             return self.stack[address.get_val(at_e_val)]
+
+    def has_seg_at(self, address: int) -> bool:
+        """Checks if the stack in this state has a segment at offset address"""
+        return address in self.stack.keys()
 
     def add_seg(self, pos: int, seg: Segment) -> None:
         """Overrides stack at pos with seg"""
@@ -355,7 +359,6 @@ class State:
 
                 elif src['type'] == 'mem':
                     # source is a memory address
-
                     if src['ignore']:
                         done = True
                     else:
@@ -369,7 +372,10 @@ class State:
                 # destination is a memory address
                 if src['type'] == 'reg':
                     # source is a register, does not occur in basic tests
-                    pass
+                    if self.has_seg_at(dest['val']):
+                        pass
+                    else:
+                        seg = Segment()
                 elif src['type'] == 'num':
                     # source is a hex number that will be used as a memory address
                     offset = dest['val']
@@ -378,19 +384,19 @@ class State:
                         existing_segment.val = src['val']
                         done = True
 
-        # print("Stack now")
-        # print(self.stack)
-        # print("Reg now")
-        # print(self.reg_vals)
+        print("Stack now")
+        print(self.stack)
+        print("Reg now")
+        print(self.reg_vals)
         if not done:
-            pass
-            # print("---------------------------")
-            # print(inst)
-            # print(dest)
-            # print(src)
-            # print(bcolors.FAIL)
-            # print("INSTRUCTION NOT ANALYZED")
-            # print(bcolors.ENDC)
+
+            print("---------------------------")
+            print(inst)
+            print(dest)
+            print(src)
+            print(bcolors.FAIL)
+            print("INSTRUCTION NOT ANALYZED")
+            print(bcolors.ENDC)
 
     def add_reg_val(self, inst: str, reg: str, val: str) -> None:
         """Adds to the registers of the current state the new value at register reg. How this is handled
